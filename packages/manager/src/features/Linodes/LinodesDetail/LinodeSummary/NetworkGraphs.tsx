@@ -1,22 +1,22 @@
 import { Stats } from '@linode/api-v4/lib/linodes';
 import Grid from '@mui/material/Unstable_Grid2';
-import { styled, useTheme, Theme } from '@mui/material/styles';
-import { map, pathOr } from 'ramda';
+import { Theme, styled, useTheme } from '@mui/material/styles';
 import * as React from 'react';
 
+import { AreaChart } from 'src/components/AreaChart/AreaChart';
+import { NetworkTimeData } from 'src/components/AreaChart/types';
+import { Box } from 'src/components/Box';
 import { LineGraph } from 'src/components/LineGraph/LineGraph';
 import {
   convertNetworkToUnit,
   formatBitsPerSecond,
   formatNetworkTooltip,
   generateNetworkUnits,
+  NetworkUnit,
 } from 'src/features/Longview/shared/utilities';
-import {
-  Metrics,
-  getMetrics,
-  getTotalTraffic,
-} from 'src/utilities/statMetrics';
-import { readableBytes } from 'src/utilities/unitConversions';
+import { useFlags } from 'src/hooks/useFlags';
+import { Metrics, getMetrics } from 'src/utilities/statMetrics';
+
 import { StatsPanel } from './StatsPanel';
 
 export interface TotalTrafficProps {
@@ -24,9 +24,6 @@ export interface TotalTrafficProps {
   inTraffic: string;
   outTraffic: string;
 }
-
-const formatTotalTraffic = (value: number) =>
-  readableBytes(value, { base10: true }).formatted;
 
 export interface ChartProps {
   height: number;
@@ -39,6 +36,7 @@ interface Props extends ChartProps {
   rangeSelection: string;
   stats?: Stats;
   timezone: string;
+  xAxisTickFormat: string;
 }
 
 interface NetworkMetrics {
@@ -58,53 +56,34 @@ interface NetworkStats {
 const _getMetrics = (data: NetworkStats) => {
   return {
     privateIn: getMetrics(data.privateIn),
-    privateOut: getMetrics(data.privateOut ?? []),
+    privateOut: getMetrics(data.privateOut),
     publicIn: getMetrics(data.publicIn),
     publicOut: getMetrics(data.publicOut),
   };
 };
 
 export const NetworkGraphs = (props: Props) => {
-  const { rangeSelection, stats, ...rest } = props;
+  const { rangeSelection, stats, xAxisTickFormat, ...rest } = props;
 
   const theme = useTheme();
+  const flags = useFlags();
 
   const v4Data: NetworkStats = {
-    privateIn: pathOr([], ['data', 'netv4', 'private_in'], stats),
-    privateOut: pathOr([], ['data', 'netv4', 'private_out'], stats),
-    publicIn: pathOr([], ['data', 'netv4', 'in'], stats),
-    publicOut: pathOr([], ['data', 'netv4', 'out'], stats),
+    privateIn: stats?.data.netv4.private_in ?? [],
+    privateOut: stats?.data.netv4.private_out ?? [],
+    publicIn: stats?.data.netv4.in ?? [],
+    publicOut: stats?.data.netv4.out ?? [],
   };
 
   const v6Data: NetworkStats = {
-    privateIn: pathOr([], ['data', 'netv6', 'private_in'], stats),
-    privateOut: pathOr([], ['data', 'netv6', 'private_out'], stats),
-    publicIn: pathOr([], ['data', 'netv6', 'in'], stats),
-    publicOut: pathOr([], ['data', 'netv6', 'out'], stats),
+    privateIn: stats?.data.netv6.private_in ?? [],
+    privateOut: stats?.data.netv6.private_out ?? [],
+    publicIn: stats?.data.netv6.in ?? [],
+    publicOut: stats?.data.netv6.out ?? [],
   };
 
   const v4Metrics = _getMetrics(v4Data);
   const v6Metrics = _getMetrics(v6Data);
-
-  const v4totalTraffic: TotalTrafficProps = map(
-    formatTotalTraffic,
-    getTotalTraffic(
-      v4Metrics.publicIn.total,
-      v4Metrics.publicOut.total,
-      v4Data.publicIn.length,
-      v6Metrics.publicIn.total,
-      v6Metrics.publicOut.total
-    )
-  );
-
-  const v6totalTraffic: TotalTrafficProps = map(
-    formatTotalTraffic,
-    getTotalTraffic(
-      v6Metrics.publicIn.total,
-      v6Metrics.publicOut.total,
-      v6Metrics.publicIn.length
-    )
-  );
 
   // Convert to bytes, which is what generateNetworkUnits expects.
   const maxV4InBytes =
@@ -131,18 +110,18 @@ export const NetworkGraphs = (props: Props) => {
     rangeSelection,
     theme,
     timezone: props.timezone,
+    xAxisTickFormat,
   };
 
   return (
     <StyledGraphGrid container spacing={4} xs={12}>
-      <StyledGrid xs={12}>
+      <StyledGrid recharts={flags.recharts} xs={12}>
         <StatsPanel
           renderBody={() => (
             <Graph
               ariaLabel="IPv4 Network Traffic Graph"
               data={v4Data}
               metrics={v4Metrics}
-              totalTraffic={v4totalTraffic}
               unit={v4Unit}
               {...commonGraphProps}
             />
@@ -151,14 +130,13 @@ export const NetworkGraphs = (props: Props) => {
           {...rest}
         />
       </StyledGrid>
-      <StyledGrid xs={12}>
+      <StyledGrid recharts={flags.recharts} xs={12}>
         <StatsPanel
           renderBody={() => (
             <Graph
               ariaLabel="IPv6 Network Traffic Graph"
               data={v6Data}
               metrics={v6Metrics}
-              totalTraffic={v6totalTraffic}
               unit={v6Unit}
               {...commonGraphProps}
             />
@@ -179,8 +157,8 @@ interface GraphProps {
   rangeSelection: string;
   theme: Theme;
   timezone: string;
-  totalTraffic: TotalTrafficProps;
-  unit: string;
+  unit: NetworkUnit;
+  xAxisTickFormat: string;
 }
 
 const Graph = (props: GraphProps) => {
@@ -193,12 +171,15 @@ const Graph = (props: GraphProps) => {
     theme,
     timezone,
     unit,
+    xAxisTickFormat,
   } = props;
+
+  const flags = useFlags();
 
   const format = formatBitsPerSecond;
 
   const convertNetworkData = (value: number) => {
-    return convertNetworkToUnit(value, unit as any);
+    return convertNetworkToUnit(value, unit);
   };
 
   /**
@@ -216,18 +197,93 @@ const Graph = (props: GraphProps) => {
   const convertedPublicOut = data.publicOut;
   const convertedPrivateIn = data.privateIn;
   const convertedPrivateOut = data.privateOut;
+  const timeData: NetworkTimeData[] = [];
+
+  for (let i = 0; i < data.publicIn.length; i++) {
+    timeData.push({
+      'Private In': convertNetworkData(data.privateIn[i][1]),
+      'Private Out': convertNetworkData(data.privateOut[i][1]),
+      'Public In': convertNetworkData(data.publicIn[i][1]),
+      'Public Out': convertNetworkData(data.publicOut[i][1]),
+      timestamp: data.publicIn[i][0],
+    });
+  }
+
+  // @TODO recharts: remove conditional code and delete old chart when we decide recharts is stable
+  if (flags.recharts) {
+    return (
+      <Box marginLeft={-4} marginTop={2}>
+        <AreaChart
+          areas={[
+            {
+              color: theme.graphs.darkGreen,
+              dataKey: 'Public In',
+            },
+            {
+              color: theme.graphs.lightGreen,
+              dataKey: 'Public Out',
+            },
+            {
+              color: theme.graphs.purple,
+              dataKey: 'Private In',
+            },
+            {
+              color: theme.graphs.yellow,
+              dataKey: 'Private Out',
+            },
+          ]}
+          legendRows={[
+            {
+              data: metrics.publicIn,
+              format,
+              legendColor: 'darkGreen',
+              legendTitle: 'Public In',
+            },
+            {
+              data: metrics.publicOut,
+              format,
+              legendColor: 'lightGreen',
+              legendTitle: 'Public Out',
+            },
+            {
+              data: metrics.privateIn,
+              format,
+              legendColor: 'purple',
+              legendTitle: 'Private In',
+            },
+            {
+              data: metrics.privateOut,
+              format,
+              legendColor: 'yellow',
+              legendTitle: 'Private Out',
+            },
+          ]}
+          xAxis={{
+            tickFormat: xAxisTickFormat,
+            tickGap: 60,
+          }}
+          ariaLabel={ariaLabel}
+          data={timeData}
+          height={420}
+          showLegend
+          timezone={timezone}
+          unit={` ${unit}/s`}
+        />
+      </Box>
+    );
+  }
 
   return (
     <LineGraph
       data={[
         {
-          backgroundColor: theme.graphs.network.inbound,
+          backgroundColor: theme.graphs.darkGreen,
           borderColor: 'transparent',
           data: convertedPublicIn,
           label: 'Public In',
         },
         {
-          backgroundColor: theme.graphs.network.outbound,
+          backgroundColor: theme.graphs.lightGreen,
           borderColor: 'transparent',
           data: convertedPublicOut,
           label: 'Public Out',
@@ -275,15 +331,20 @@ const Graph = (props: GraphProps) => {
   );
 };
 
-const StyledGrid = styled(Grid, { label: 'StyledGrid' })(({ theme }) => ({
+const StyledGrid = styled(Grid, {
+  label: 'StyledGrid',
+  shouldForwardProp: (prop) => prop !== 'recharts',
+})<{ recharts?: boolean }>(({ recharts, theme }) => ({
   '& h2': {
     fontSize: '1rem',
   },
   '&.MuiGrid-item': {
     padding: theme.spacing(2),
   },
-  backgroundColor: theme.bg.offWhite,
+  backgroundColor: recharts ? theme.bg.white : theme.bg.offWhite,
   border: `solid 1px ${theme.borderColors.divider}`,
+  padding: theme.spacing(3),
+  paddingBottom: theme.spacing(2),
   [theme.breakpoints.down(1100)]: {
     '&:first-of-type': {
       marginBottom: theme.spacing(2),

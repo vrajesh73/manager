@@ -10,6 +10,11 @@ import { useAllLinodesQuery } from 'src/queries/linodes/linodes';
 import { mapIdsToDevices } from 'src/utilities/mapIdsToDevices';
 
 interface LinodeSelectProps {
+  /** Determine whether isOptionEqualToValue prop should be defined for Autocomplete
+   * component (to avoid "The value provided to Autocomplete is invalid [...]" console
+   * errors). See https://github.com/linode/manager/pull/10089 for context & discussion.
+   */
+  checkIsOptionEqualToValue?: boolean;
   /** Whether to display the clear icon. Defaults to `true`. */
   clearable?: boolean;
   /** Disable editing the input value. */
@@ -73,6 +78,7 @@ export const LinodeSelect = (
   props: LinodeMultiSelectProps | LinodeSingleSelectProps
 ) => {
   const {
+    checkIsOptionEqualToValue,
     clearable = true,
     disabled,
     errorText,
@@ -116,6 +122,11 @@ export const LinodeSelect = (
       getOptionLabel={(linode: Linode) =>
         renderOptionLabel ? renderOptionLabel(linode) : linode.label
       }
+      isOptionEqualToValue={
+        checkIsOptionEqualToValue
+          ? (option, value) => option.id === value.id
+          : undefined
+      }
       noOptionsText={
         noOptionsMessage ?? getDefaultNoOptionsMessage(error, isLoading)
       }
@@ -152,6 +163,7 @@ export const LinodeSelect = (
       ChipProps={{ deleteIcon: <CloseIcon /> }}
       PopperComponent={CustomPopper}
       clearOnBlur={false}
+      data-testid="add-linode-autocomplete"
       disableClearable={!clearable}
       disableCloseOnSelect={multiple}
       disablePortal={true}
@@ -182,6 +194,6 @@ const getDefaultNoOptionsMessage = (
   } else if (loading) {
     return 'Loading your Linodes...';
   } else {
-    return 'No options';
+    return 'No available Linodes';
   }
 };

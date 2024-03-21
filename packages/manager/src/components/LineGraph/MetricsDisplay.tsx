@@ -1,6 +1,5 @@
 import * as React from 'react';
 
-import { Table } from 'src/components/Table';
 import { TableBody } from 'src/components/TableBody';
 import { TableCell } from 'src/components/TableCell';
 import { TableHead } from 'src/components/TableHead';
@@ -8,15 +7,21 @@ import { TableRow } from 'src/components/TableRow';
 import { Typography } from 'src/components/Typography';
 import { Metrics } from 'src/utilities/statMetrics';
 
-import styled, { StyleProps } from './MetricDisplay.styles';
+import {
+  StyledButton,
+  StyledTable,
+  StyledTableCell,
+} from './MetricDisplay.styles';
 
-interface MetricsDisplayProps {
+interface Props {
+  hiddenRows?: string[];
   rows: MetricsDisplayRow[];
 }
 
-interface MetricsDisplayRow {
+export interface MetricsDisplayRow {
   data: Metrics;
   format: (n: number) => string;
+  handleLegendClick?: () => void;
   legendColor:
     | 'blue'
     | 'darkGreen'
@@ -28,39 +33,48 @@ interface MetricsDisplayRow {
   legendTitle: string;
 }
 
-type CombinedProps = MetricsDisplayProps & StyleProps;
-
-export const MetricsDisplay = ({ classes, rows }: CombinedProps) => {
+export const MetricsDisplay = ({ hiddenRows, rows }: Props) => {
   const rowHeaders = ['Max', 'Avg', 'Last'];
+  const sxProps = {
+    borderTop: 'none !important',
+  };
 
   return (
-    <Table aria-label="Stats and metrics" className={classes.root} noBorder>
-      <TableHead>
-        <TableRow>
-          <TableCell>{''}</TableCell>
+    <StyledTable aria-label="Stats and metrics">
+      <TableHead sx={sxProps}>
+        <TableRow sx={sxProps}>
+          <TableCell sx={sxProps}>{''}</TableCell>
           {rowHeaders.map((section, idx) => (
-            <TableCell
-              className={classes.tableHeadInner}
-              data-qa-header-cell
-              key={idx}
-            >
-              <Typography className={classes.text} variant="body1">
-                {section}
-              </Typography>
+            <TableCell data-qa-header-cell key={idx} sx={sxProps}>
+              {section}
             </TableCell>
           ))}
         </TableRow>
       </TableHead>
       <TableBody>
         {rows.map((row) => {
-          const { data, format, legendColor, legendTitle } = row;
+          const {
+            data,
+            format,
+            handleLegendClick,
+            legendColor,
+            legendTitle,
+          } = row;
+          const hidden = hiddenRows?.includes(legendTitle);
+
           return (
             <TableRow data-qa-metric-row key={legendTitle}>
-              <TableCell className={classes.legend}>
-                <div className={classes[legendColor]} data-qa-legend-title>
+              <StyledTableCell>
+                <StyledButton
+                  data-testid="legend-title"
+                  disableTouchRipple
+                  hidden={hidden}
+                  legendColor={legendColor}
+                  onClick={handleLegendClick}
+                >
                   <Typography component="span">{legendTitle}</Typography>
-                </div>
-              </TableCell>
+                </StyledButton>
+              </StyledTableCell>
               {metricsBySection(data).map((section, idx) => {
                 return (
                   <TableCell
@@ -68,9 +82,7 @@ export const MetricsDisplay = ({ classes, rows }: CombinedProps) => {
                     key={idx}
                     parentColumn={rowHeaders[idx]}
                   >
-                    <Typography className={classes.text} variant="body1">
-                      {format(section)}
-                    </Typography>
+                    {format(section)}
                   </TableCell>
                 );
               })}
@@ -78,7 +90,7 @@ export const MetricsDisplay = ({ classes, rows }: CombinedProps) => {
           );
         })}
       </TableBody>
-    </Table>
+    </StyledTable>
   );
 };
 
@@ -90,4 +102,4 @@ export const metricsBySection = (data: Metrics): number[] => [
   data.last,
 ];
 
-export default styled(MetricsDisplay);
+export default MetricsDisplay;

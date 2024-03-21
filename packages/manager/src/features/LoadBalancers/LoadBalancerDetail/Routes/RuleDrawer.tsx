@@ -17,19 +17,20 @@ import { Stack } from 'src/components/Stack';
 import { TextField } from 'src/components/TextField';
 import { Toggle } from 'src/components/Toggle/Toggle';
 import { Typography } from 'src/components/Typography';
-import { useLoadBalancerRouteUpdateMutation } from 'src/queries/aglb/routes';
+import { useLoadBalancerRouteUpdateMutation } from 'src/queries/aclb/routes';
 import { getFormikErrorsFromAPIErrors } from 'src/utilities/formikErrorUtils';
 
 import { ServiceTargetSelect } from '../ServiceTargets/ServiceTargetSelect';
-import { MatchTypeInfo } from './MatchTypeInfo';
 import { ROUTE_COPY } from './constants';
+import { MatchTypeInfo } from './MatchTypeInfo';
 import {
   TimeUnit,
   defaultServiceTarget,
   defaultTTL,
+  defaultTTLUnit,
+  getInitialValues,
   getIsSessionStickinessEnabled,
   getNormalizedRulePayload,
-  initialValues,
   matchTypeOptions,
   matchValuePlaceholder,
   stickyOptions,
@@ -48,7 +49,7 @@ interface Props {
 }
 
 /**
- * Drawer used for *adding* and *editing* AGLB rules
+ * Drawer used for *adding* and *editing* ACLB rules
  */
 export const RuleDrawer = (props: Props) => {
   const {
@@ -74,7 +75,9 @@ export const RuleDrawer = (props: Props) => {
     reset,
   } = useLoadBalancerRouteUpdateMutation(loadbalancerId, route?.id ?? -1);
 
-  const [ttlUnit, setTTLUnit] = useState<TimeUnit>('hour');
+  const [ttlUnit, setTTLUnit] = useState<TimeUnit>(defaultTTLUnit);
+
+  const initialValues = getInitialValues(protocol);
 
   const formik = useFormik<RulePayload>({
     enableReinitialize: true,
@@ -96,10 +99,10 @@ export const RuleDrawer = (props: Props) => {
           label: route?.label,
           protocol: route?.protocol,
           // If we are editing, send the updated rules, otherwise
-          // append a new rule to the end.
+          // append a new rule to the beginning.
           rules: isEditMode
             ? existingRules
-            : [...existingRules, normalizedRule],
+            : [normalizedRule, ...existingRules],
         });
         onClose();
       } catch (errors) {
@@ -121,7 +124,7 @@ export const RuleDrawer = (props: Props) => {
     _onClose();
     formik.resetForm();
     reset();
-    setTTLUnit('hour');
+    setTTLUnit(defaultTTLUnit);
   };
 
   const onAddServiceTarget = () => {
@@ -154,7 +157,7 @@ export const RuleDrawer = (props: Props) => {
   const isStickinessEnabled = getIsSessionStickinessEnabled(formik.values);
 
   const cookieType =
-    formik.values.match_condition.session_stickiness_ttl === null
+    formik.values.match_condition?.session_stickiness_ttl === null
       ? stickyOptions[1]
       : stickyOptions[0];
 
@@ -218,27 +221,22 @@ export const RuleDrawer = (props: Props) => {
             {route?.protocol !== 'tcp' && (
               <>
                 <TextField
-                  errorText={
-                    formik.touched.match_condition?.hostname
-                      ? formik.errors.match_condition?.hostname
-                      : undefined
-                  }
-                  label="Hostname"
+                  errorText={getIn(formik.errors, 'match_condition.hostname')}
+                  label="Hostname Match"
                   labelTooltipText={ROUTE_COPY.Rule.Hostname}
                   name="match_condition.hostname"
                   onBlur={formik.handleBlur}
                   onChange={formik.handleChange}
                   optional
-                  placeholder="www.example.com"
-                  value={formik.values.match_condition.hostname}
+                  placeholder="www.example.org"
+                  value={formik.values.match_condition?.hostname}
                 />
                 <Stack direction="row" spacing={2}>
                   <Autocomplete
-                    errorText={
-                      formik.touched.match_condition?.match_field
-                        ? formik.errors.match_condition?.match_field
-                        : undefined
-                    }
+                    errorText={getIn(
+                      formik.errors,
+                      'match_condition.match_field'
+                    )}
                     onBlur={() =>
                       formik.setFieldTouched('match_condition.match_field')
                     }
@@ -252,7 +250,7 @@ export const RuleDrawer = (props: Props) => {
                       matchTypeOptions.find(
                         (option) =>
                           option.value ===
-                          formik.values.match_condition.match_field
+                          formik.values.match_condition?.match_field
                       ) ?? matchTypeOptions[0]
                     }
                     disableClearable
@@ -263,18 +261,20 @@ export const RuleDrawer = (props: Props) => {
                   />
                   <TextField
                     errorText={
-                      formik.touched.match_condition?.match_value
-                        ? formik.errors.match_condition?.match_value
+                      getIn(formik.touched, 'match_condition.match_value')
+                        ? getIn(formik.errors, 'match_condition.match_value')
                         : undefined
                     }
                     labelTooltipText={
                       ROUTE_COPY.Rule.MatchValue[
-                        formik.values.match_condition.match_field
+                        formik.values.match_condition?.match_field ??
+                          'always_match'
                       ]
                     }
                     placeholder={
                       matchValuePlaceholder[
-                        formik.values.match_condition.match_field
+                        formik.values.match_condition?.match_field ??
+                          'always_match'
                       ]
                     }
                     containerProps={{ sx: { flexGrow: 1 } }}
@@ -282,7 +282,7 @@ export const RuleDrawer = (props: Props) => {
                     name="match_condition.match_value"
                     onBlur={formik.handleBlur}
                     onChange={formik.handleChange}
-                    value={formik.values.match_condition.match_value}
+                    value={formik.values.match_condition?.match_value}
                   />
                 </Stack>
                 <Stack alignItems="center" direction="row" gap={2}>
@@ -418,14 +418,19 @@ export const RuleDrawer = (props: Props) => {
                   />
                   <TextField
                     errorText={
-                      formik.touched.match_condition?.session_stickiness_cookie
-                        ? formik.errors.match_condition
-                            ?.session_stickiness_cookie
+                      getIn(
+                        formik.touched,
+                        'match_condition.session_stickiness_cookie'
+                      )
+                        ? getIn(
+                            formik.errors,
+                            'match_condition.session_stickiness_cookie'
+                          )
                         : undefined
                     }
                     value={
-                      formik.values.match_condition.session_stickiness_cookie ??
-                      ''
+                      formik.values.match_condition
+                        ?.session_stickiness_cookie ?? ''
                     }
                     label="Cookie Key"
                     labelTooltipText={ROUTE_COPY.Rule.Stickiness.Cookie}
@@ -438,9 +443,14 @@ export const RuleDrawer = (props: Props) => {
                     <Stack direction="row" spacing={1}>
                       <TextField
                         errorText={
-                          formik.touched.match_condition?.session_stickiness_ttl
-                            ? formik.errors.match_condition
-                                ?.session_stickiness_ttl
+                          getIn(
+                            formik.touched,
+                            'match_condition.session_stickiness_ttl'
+                          )
+                            ? getIn(
+                                formik.errors,
+                                'match_condition.session_stickiness_ttl'
+                              )
                             : undefined
                         }
                         onChange={(e) =>
@@ -452,7 +462,7 @@ export const RuleDrawer = (props: Props) => {
                         }
                         value={
                           (formik.values.match_condition
-                            .session_stickiness_ttl ?? 0) /
+                            ?.session_stickiness_ttl ?? 0) /
                           timeUnitFactorMap[ttlUnit]
                         }
                         label="Stickiness TTL"
@@ -463,20 +473,19 @@ export const RuleDrawer = (props: Props) => {
                       />
                       <Autocomplete
                         onChange={(_, option) => {
-                          const currentTTLUnit = ttlUnit;
-
                           const factor =
                             timeUnitFactorMap[option.key] /
-                            timeUnitFactorMap[currentTTLUnit];
+                            timeUnitFactorMap[ttlUnit];
 
                           setTTLUnit(option.key);
 
                           if (
-                            formik.values.match_condition.session_stickiness_ttl
+                            formik.values.match_condition
+                              ?.session_stickiness_ttl
                           ) {
                             const oldValue =
                               formik.values.match_condition
-                                .session_stickiness_ttl;
+                                ?.session_stickiness_ttl;
 
                             formik.setFieldValue(
                               'match_condition.session_stickiness_ttl',
@@ -490,7 +499,7 @@ export const RuleDrawer = (props: Props) => {
                         disableClearable
                         label="test"
                         options={timeUnitOptions}
-                        sx={{ marginTop: '45px !important', minWidth: '140px' }}
+                        sx={{ marginTop: '52px !important', minWidth: '140px' }}
                         textFieldProps={{ hideLabel: true }}
                       />
                     </Stack>
@@ -504,6 +513,7 @@ export const RuleDrawer = (props: Props) => {
           primaryButtonProps={{
             label: isEditMode ? 'Save' : 'Add Rule',
             loading: formik.isSubmitting || isLoading,
+            disabled: isEditMode && !formik.dirty,
             type: 'submit',
           }}
           secondaryButtonProps={{

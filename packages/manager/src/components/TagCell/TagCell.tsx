@@ -4,15 +4,16 @@ import { styled } from '@mui/material/styles';
 import { SxProps } from '@mui/system';
 import * as React from 'react';
 
-import Plus from 'src/assets/icons/plusSign.svg';
 import { CircleProgress } from 'src/components/CircleProgress';
 import { IconButton } from 'src/components/IconButton';
 import { Tag } from 'src/components/Tag/Tag';
 import { omittedProps } from 'src/utilities/omittedProps';
 
+import { StyledPlusIcon, StyledTagButton } from '../Button/StyledTagButton';
 import { AddTag } from './AddTag';
 
 interface TagCellProps {
+  disabled?: boolean;
   listAllTags: (tags: string[]) => void;
   sx?: SxProps;
   tags: string[];
@@ -35,13 +36,13 @@ const checkOverflow = (el: any) => {
 };
 
 const TagCell = (props: TagCellProps) => {
-  const { sx, tags, updateTags } = props;
+  const { disabled, sx, tags, updateTags } = props;
 
   const [hasOverflow, setOverflow] = React.useState<boolean>(false);
   const [addingTag, setAddingTag] = React.useState<boolean>(false);
   const [loading, setLoading] = React.useState<boolean>(false);
   const overflowRef = React.useCallback(
-    (node) => {
+    (node: HTMLDivElement) => {
       if (node !== null) {
         setOverflow(checkOverflow(node));
       }
@@ -90,6 +91,7 @@ const TagCell = (props: TagCellProps) => {
             {tags.map((thisTag) => (
               <StyledTag
                 colorVariant="lightBlue"
+                disabled={disabled}
                 key={`tag-item-${thisTag}`}
                 label={thisTag}
                 loading={loading}
@@ -108,13 +110,15 @@ const TagCell = (props: TagCellProps) => {
               <MoreHoriz />
             </StyledIconButton>
           ) : null}
-          <StyledAddTagButton
+          <StyledTagButton
+            buttonType="outlined"
+            disabled={disabled}
+            endIcon={<StyledPlusIcon />}
             onClick={() => setAddingTag(true)}
             title="Add a tag"
           >
             Add a tag
-            <Plus />
-          </StyledAddTagButton>
+          </StyledTagButton>
         </>
       )}
     </StyledGrid>
@@ -183,26 +187,4 @@ const StyledIconButton = styled(IconButton)(({ theme }) => ({
     marginLeft: 0,
   },
   width: '40px',
-}));
-
-const StyledAddTagButton = styled('button')(({ theme }) => ({
-  '& svg': {
-    color: theme.color.tagIcon,
-    height: 10,
-    marginLeft: 10,
-    width: 10,
-  },
-  alignItems: 'center',
-  backgroundColor: theme.color.tagButton,
-  border: 'none',
-  borderRadius: 3,
-  color: theme.textColors.linkActiveLight,
-  cursor: 'pointer',
-  display: 'flex',
-  fontFamily: theme.font.bold,
-  fontSize: 14,
-  height: 30,
-  paddingLeft: 10,
-  paddingRight: 10,
-  whiteSpace: 'nowrap',
 }));

@@ -12,10 +12,19 @@
   z-index: 1;
 }
 
+#dev-tools.mswEnabled svg {
+  color: #aaff00;
+}
+
 #dev-tools:hover {
-  height: 300px;
+  height: 375px;
   width: 100%;
   opacity: 0.9;
+  overflow: auto;
+}
+
+#dev-tools:hover svg {
+  color: white;
 }
 
 #dev-tools .tools {

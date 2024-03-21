@@ -1,125 +1,45 @@
-import { Theme } from '@mui/material/styles';
-import { WithStyles, WithTheme, createStyles, withStyles } from '@mui/styles';
+import { styled } from '@mui/material/styles';
 
-export type ClassNames =
-  | 'blue'
-  | 'darkGreen'
-  | 'green'
-  | 'legend'
-  | 'lightGreen'
-  | 'red'
-  | 'root'
-  | 'tableHeadInner'
-  | 'text'
-  | 'yellow';
+import { Button } from 'src/components/Button/Button';
+import { Table } from 'src/components/Table';
+import { TableCell } from 'src/components/TableCell';
+import { omittedProps } from 'src/utilities/omittedProps';
 
-export type StyleProps = WithStyles<ClassNames> & WithTheme;
+export const StyledTable = styled(Table, {
+  label: 'StyledTable',
+})(({ theme }) => ({
+  border: `1px solid ${theme.borderColors.borderTable}`,
+}));
 
-const styles = (theme: Theme) =>
-  createStyles({
-    blue: {
-      '&:before': {
-        backgroundColor: theme.graphs.blue,
-      },
+export const StyledTableCell = styled(TableCell, {
+  label: 'StyledTableCell',
+})(({ theme }) => ({
+  '& > button': {
+    '&:before': {
+      content: '""',
+      display: 'inline-block',
+      height: 20,
+      marginRight: theme.spacing(1),
+      width: 20,
     },
-    darkGreen: {
-      '&:before': {
-        backgroundColor: theme.graphs.network.inbound,
-      },
+    alignItems: 'center',
+    display: 'flex',
+    justifyContent: 'flex-start',
+    [theme.breakpoints.down('sm')]: {
+      padding: 0,
     },
-    green: {
-      '&:before': {
-        backgroundColor: theme.graphs.green,
-      },
-    },
-    legend: {
-      '& > div': {
-        '&:before': {
-          content: '""',
-          display: 'inline-block',
-          height: 20,
-          marginRight: theme.spacing(1),
-          width: 20,
-        },
-        alignItems: 'center',
-        display: 'flex',
-      },
-      [theme.breakpoints.up('md')]: {
-        width: '38%',
-      },
-    },
-    lightGreen: {
-      '&:before': {
-        backgroundColor: theme.graphs.network.outbound,
-      },
-    },
-    purple: {
-      '&:before': {
-        backgroundColor: theme.graphs.purple,
-      },
-    },
-    red: {
-      '&:before': {
-        backgroundColor: theme.graphs.red,
-      },
-    },
-    root: {
-      '& *': {
-        backgroundColor: 'transparent',
-        border: 'none',
-        height: 'auto',
-      },
-      '& .data': {
-        minWidth: 100,
-      },
-      '& td:first-of-type': {
-        backgroundColor: 'transparent !important',
-      },
-      maxWidth: 600,
-      [theme.breakpoints.down('md')]: {
-        '& td': {
-          justifyContent: 'normal',
-          minHeight: 'auto',
-        },
-        maxWidth: '100%',
-      },
-      [theme.breakpoints.down('xl')]: {
-        '& th, & td': {
-          padding: '4px !important',
-        },
-      },
-      [theme.breakpoints.only('sm')]: {
-        '& tbody': {
-          display: 'flex',
-          flexWrap: 'wrap',
-          justifyContent: 'space-between',
-        },
-        '& tr': {
-          flexBasis: '45%',
-        },
-        '& tr:not(:nth-last-child(n+3)) td:first-of-type': {
-          marginTop: theme.spacing(2),
-        },
-      },
-      [theme.breakpoints.only('xs')]: {
-        '& tr:not(:first-of-type) td': {
-          '&:first-of-type': {
-            marginTop: theme.spacing(2),
-          },
-        },
-      },
-    },
-    tableHeadInner: {
-      paddingBottom: 4,
-    },
-    text: {
-      color: theme.color.black,
-    },
-    yellow: {
-      '&:before': {
-        backgroundColor: theme.graphs.yellow,
-      },
-    },
-  });
+  },
+}));
 
-export default withStyles(styles, { withTheme: true });
+export const StyledButton = styled(Button, {
+  label: 'StyledButton',
+  shouldForwardProp: omittedProps(['legendColor', 'hidden']),
+})<{ legendColor?: string }>(({ hidden, legendColor, theme }) => ({
+  ...(legendColor && {
+    '&:before': {
+      backgroundColor: hidden
+        ? theme.color.disabledText
+        : theme.graphs[legendColor],
+    },
+  }),
+}));

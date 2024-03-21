@@ -30,23 +30,25 @@ describe('Edit API Token Drawer', () => {
     expect(saveButton).toBeVisible();
 
     const cancelBtn = getByText(/Cancel/);
-    expect(cancelBtn).toBeEnabled();
+    expect(cancelBtn).not.toHaveAttribute('aria-disabled', 'true');
     expect(cancelBtn).toBeVisible();
   });
   it('Save button should become enabled when label is changed', async () => {
     const { getByTestId } = renderWithTheme(<EditAPITokenDrawer {...props} />);
 
     const saveButton = getByTestId('save-button');
-    expect(saveButton).toBeDisabled();
+    expect(saveButton).toHaveAttribute('aria-disabled', 'true');
 
     await act(async () => {
       const labelField = getByTestId('textfield-input');
 
-      userEvent.type(labelField, 'updated-token-label');
+      await userEvent.type(labelField, 'updated-token-label');
 
       const saveButton = getByTestId('save-button');
 
-      await waitFor(() => expect(saveButton).toBeEnabled());
+      await waitFor(() =>
+        expect(saveButton).toHaveAttribute('aria-disabled', 'false')
+      );
     });
   });
   it('Should close when updating a label and saving', async () => {
@@ -56,21 +58,23 @@ describe('Edit API Token Drawer', () => {
     await act(async () => {
       const labelField = getByTestId('textfield-input');
 
-      userEvent.type(labelField, 'my-token-updated');
+      await userEvent.type(labelField, 'my-token-updated');
 
       const saveButton = getByTestId('save-button');
 
-      await waitFor(() => expect(saveButton).toBeEnabled());
+      await waitFor(() =>
+        expect(saveButton).toHaveAttribute('aria-disabled', 'false')
+      );
 
-      userEvent.click(saveButton);
+      await userEvent.click(saveButton);
 
       await waitFor(() => expect(props.onClose).toBeCalled());
     });
   });
-  it('Should close when Cancel is pressed', () => {
+  it('Should close when Cancel is pressed', async () => {
     const { getByText } = renderWithTheme(<EditAPITokenDrawer {...props} />);
     const cancelButton = getByText(/Cancel/);
-    userEvent.click(cancelButton);
+    await userEvent.click(cancelButton);
     expect(props.onClose).toBeCalled();
   });
 });

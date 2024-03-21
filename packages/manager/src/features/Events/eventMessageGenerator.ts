@@ -108,13 +108,25 @@ export const eventMessageCreators: { [index: string]: CreatorsForStatus } = {
     notification: (e) =>
       `Database ${e.entity!.label}'s credentials have been reset.`,
   },
+  database_degraded: {
+    notification: (e) => `Database ${e.entity!.label} has been degraded.`,
+  },
   database_delete: {
     notification: (e) => `Database ${e.entity!.label} has been deleted.`,
+  },
+  database_failed: {
+    notification: (e) => `Database ${e.entity!.label} failed to update.`,
   },
   database_low_disk_space: {
     finished: (e) =>
       `Low disk space alert for database ${e.entity!.label} has cleared.`,
     notification: (e) => `Database ${e.entity!.label} has low disk space.`,
+  },
+  database_resize: {
+    failed: (e) => `Database ${e.entity!.label} could not be resized.`,
+    finished: (e) => `Database ${e.entity!.label} has been resized.`,
+    scheduled: (e) => `Database ${e.entity!.label} is scheduled for resizing.`,
+    started: (e) => `Database ${e.entity!.label} is resizing.`,
   },
   database_update: {
     finished: (e) => `Database ${e.entity!.label} has been updated.`,
@@ -666,6 +678,15 @@ export const eventMessageCreators: { [index: string]: CreatorsForStatus } = {
   oauth_client_update: {
     notification: (e) => `OAuth App ${e.entity!.label} has been updated.`,
   },
+  obj_access_key_create: {
+    notification: (e) => `Access Key ${e.entity!.label} has been created.`,
+  },
+  obj_access_key_delete: {
+    notification: (e) => `Access Key ${e.entity!.label} has been deleted.`,
+  },
+  obj_access_key_update: {
+    notification: (e) => `Access Key ${e.entity!.label} has been updated.`,
+  },
   password_reset: {
     failed: (e) => `Password reset failed for Linode ${e.entity!.label}.`,
     finished: (e) => `Password has been reset on Linode ${e.entity!.label}.`,
@@ -677,6 +698,29 @@ export const eventMessageCreators: { [index: string]: CreatorsForStatus } = {
   },
   payment_submitted: {
     notification: (e) => `A payment was successfully submitted.`,
+  },
+  // This event action denotes when a Placement Group has been selected during the Linode Create flow.
+  placement_group_assign: {
+    notification: (e) => `Placement Group successfully assigned.`,
+  },
+  // This event action denotes an existing Linode instance has been assigned to an existing Placement Group.
+  placement_group_assigned: {
+    notification: (e) =>
+      `Linode ${e.secondary_entity?.label} has been assigned to Placement Group ${e.entity?.label}.`,
+  },
+  placement_group_created: {
+    notification: (e) =>
+      `Placement Group ${e.entity?.label} has been successfully created.`,
+  },
+  placement_group_deleted: {
+    notification: (e) => `Placement Group ${e.entity?.label} has been deleted.`,
+  },
+  placement_group_unassigned: {
+    notification: (e) =>
+      `Linode ${e.secondary_entity?.label} has been unassigned from Placement Group ${e.entity?.label}.`,
+  },
+  placement_group_updated: {
+    notification: (e) => `Placement Group ${e.entity?.label} has been updated.`,
   },
   profile_update: {
     notification: (e) => `Your profile has been updated.`,
@@ -961,11 +1005,10 @@ export function applyLinking(event: Event, message: string) {
     return '';
   }
 
-  const entityLinkTarget = getLinkForEvent(event.action, event.entity, false);
+  const entityLinkTarget = getLinkForEvent(event.action, event.entity);
   const secondaryEntityLinkTarget = getLinkForEvent(
     event.action,
-    event.secondary_entity,
-    false
+    event.secondary_entity
   );
 
   let newMessage = message;

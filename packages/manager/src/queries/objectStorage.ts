@@ -8,12 +8,15 @@ import {
   ObjectStorageObjectListResponse,
   ObjectStorageObjectURL,
   ObjectStorageObjectURLOptions,
+  Region,
   createBucket,
   deleteBucket,
+  deleteBucketWithRegion,
   deleteSSLCert,
   getBucket,
   getBuckets,
   getBucketsInCluster,
+  getBucketsInRegion,
   getClusters,
   getObjectList,
   getObjectStorageKeys,
@@ -28,17 +31,23 @@ import {
   useMutation,
   useQuery,
   useQueryClient,
-} from 'react-query';
+} from '@tanstack/react-query';
 
 import { OBJECT_STORAGE_DELIMITER as delimiter } from 'src/constants';
 import { getAll } from 'src/utilities/getAll';
 
-import { queryKey as accountSettingsQueryKey } from './accountSettings';
+import { accountQueries } from './account/queries';
 import { queryPresets } from './base';
 
 export interface BucketError {
+  /*
+   @TODO OBJ Multicluster: 'region' will become required, and the 'cluster' field will be deprecated
+   once the feature is fully rolled out in production as part of the process of cleaning up the 'objMultiCluster'
+   feature flag.
+  */
   cluster: ObjectStorageCluster;
   error: APIError[];
+  region?: Region;
 }
 
 interface BucketsResponce {
@@ -61,7 +70,7 @@ export const getAllObjectStorageBuckets = () =>
 
 export const useObjectStorageClusters = (enabled: boolean = true) =>
   useQuery<ObjectStorageCluster[], APIError[]>(
-    `${queryKey}-clusters`,
+    [`${queryKey}-clusters`],
     getAllObjectStorageClusters,
     { ...queryPresets.oneTimeFetch, enabled }
   );
@@ -71,7 +80,7 @@ export const useObjectStorageBuckets = (
   enabled: boolean = true
 ) =>
   useQuery<BucketsResponce, APIError[]>(
-    `${queryKey}-buckets`,
+    [`${queryKey}-buckets`],
     // Ideally we would use the line below, but if a cluster is down, the buckets on that
     // cluster don't show up in the responce. We choose to fetch buckets per-cluster so
     // we can tell the user which clusters are having issues.
@@ -80,6 +89,20 @@ export const useObjectStorageBuckets = (
     {
       ...queryPresets.longLived,
       enabled: clusters !== undefined && enabled,
+      retry: false,
+    }
+  );
+
+export const useObjectStorageBucketsFromRegions = (
+  regions: Region[] | undefined,
+  enabled: boolean = true
+) =>
+  useQuery<BucketsResponce, APIError[]>(
+    [`${queryKey}-buckets`],
+    () => getAllBucketsFromRegions(regions),
+    {
+      ...queryPresets.longLived,
+      enabled: regions !== undefined && enabled,
       retry: false,
     }
   );
@@ -100,9 +123,9 @@ export const useCreateBucketMutation = () => {
   >(createBucket, {
     onSuccess: (newEntity) => {
       // Invalidate account settings because it contains obj information
-      queryClient.invalidateQueries(accountSettingsQueryKey);
+      queryClient.invalidateQueries(accountQueries.settings.queryKey);
       queryClient.setQueryData<BucketsResponce>(
-        `${queryKey}-buckets`,
+        [`${queryKey}-buckets`],
         (oldData) => ({
           buckets: [...(oldData?.buckets || []), newEntity],
           errors: oldData?.errors || [],
@@ -119,7 +142,7 @@ export const useDeleteBucketMutation = () => {
     {
       onSuccess: (_, variables) => {
         queryClient.setQueryData<BucketsResponce>(
-          `${queryKey}-buckets`,
+          [`${queryKey}-buckets`],
           (oldData) => {
             return {
               buckets:
@@ -127,6 +150,39 @@ export const useDeleteBucketMutation = () => {
                   (bucket: ObjectStorageBucket) =>
                     !(
                       bucket.cluster === variables.cluster &&
+                      bucket.label === variables.label
+                    )
+                ) || [],
+              errors: oldData?.errors || [],
+            };
+          }
+        );
+      },
+    }
+  );
+};
+
+/*
+   @TODO OBJ Multicluster: useDeleteBucketWithRegionMutation is a temporary hook,
+   once feature is rolled out we replace it with existing useDeleteBucketMutation
+   by updating it with region instead of cluster.
+  */
+
+export const useDeleteBucketWithRegionMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation<{}, APIError[], { label: string; region: string }>(
+    (data) => deleteBucketWithRegion(data),
+    {
+      onSuccess: (_, variables) => {
+        queryClient.setQueryData<BucketsResponce>(
+          [`${queryKey}-buckets`],
+          (oldData) => {
+            return {
+              buckets:
+                oldData?.buckets.filter(
+                  (bucket: ObjectStorageBucket) =>
+                    !(
+                      bucket.region === variables.region &&
                       bucket.label === variables.label
                     )
                 ) || [],
@@ -188,6 +244,41 @@ export const getAllBucketsFromClusters = async (
   return { buckets, errors } as BucketsResponce;
 };
 
+export const getAllBucketsFromRegions = async (
+  regions: Region[] | undefined
+) => {
+  if (regions === undefined) {
+    return { buckets: [], errors: [] } as BucketsResponce;
+  }
+
+  const promises = regions.map((region) =>
+    getAll<ObjectStorageBucket>((params) =>
+      getBucketsInRegion(region.id, params)
+    )()
+      .then((data) => data.data)
+      .catch((error) => ({
+        error,
+        region,
+      }))
+  );
+
+  const data = await Promise.all(promises);
+
+  const bucketsPerRegion = data.filter((item) =>
+    Array.isArray(item)
+  ) as ObjectStorageBucket[][];
+
+  const buckets = bucketsPerRegion.reduce((acc, val) => acc.concat(val), []);
+
+  const errors = data.filter((item) => !Array.isArray(item)) as BucketError[];
+
+  if (errors.length === regions.length) {
+    throw new Error('Unable to get Object Storage buckets.');
+  }
+
+  return { buckets, errors } as BucketsResponce;
+};
+
 /**
  * Used to make a nice React Query queryKey by splitting the prefix
  * by the '/' character.
@@ -214,7 +305,7 @@ export const updateBucket = async (
 ) => {
   const bucket = await getBucket(cluster, bucketName);
   queryClient.setQueryData<BucketsResponce | undefined>(
-    `${queryKey}-buckets`,
+    [`${queryKey}-buckets`],
     (oldData) => {
       if (oldData === undefined) {
         return undefined;

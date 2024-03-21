@@ -6,7 +6,6 @@ import React from 'react';
 import { ActionsPanel } from 'src/components/ActionsPanel/ActionsPanel';
 import { Autocomplete } from 'src/components/Autocomplete/Autocomplete';
 import { SelectedIcon } from 'src/components/Autocomplete/Autocomplete.styles';
-import { Box } from 'src/components/Box';
 import { Divider } from 'src/components/Divider';
 import { Drawer } from 'src/components/Drawer';
 import { FormControlLabel } from 'src/components/FormControlLabel';
@@ -18,13 +17,12 @@ import { Radio } from 'src/components/Radio/Radio';
 import { RadioGroup } from 'src/components/RadioGroup';
 import { Stack } from 'src/components/Stack';
 import { TextField } from 'src/components/TextField';
-import { Toggle } from 'src/components/Toggle/Toggle';
 import { TooltipIcon } from 'src/components/TooltipIcon';
 import { Typography } from 'src/components/Typography';
 import {
   useServiceTargetCreateMutation,
   useServiceTargetUpdateMutation,
-} from 'src/queries/aglb/serviceTargets';
+} from 'src/queries/aclb/serviceTargets';
 import { getFormikErrorsFromAPIErrors } from 'src/utilities/formikErrorUtils';
 import { scrollErrorIntoView } from 'src/utilities/scrollErrorIntoView';
 
@@ -147,9 +145,6 @@ export const ServiceTargetDrawer = (props: Props) => {
 
   return (
     <Drawer onClose={onClose} open={open} title={drawerTitle}>
-      {!isEditMode && (
-        <Typography>{SERVICE_TARGET_COPY.Description}</Typography>
-      )}
       <form onSubmit={formik.handleSubmit}>
         {generalCreateErrors && (
           <Notice
@@ -168,9 +163,10 @@ export const ServiceTargetDrawer = (props: Props) => {
           />
         )}
         <TextField
-          errorText={formik.errors.label}
+          errorText={formik.touched.label ? formik.errors.label : undefined}
           label="Service Target Label"
           name="label"
+          onBlur={formik.handleBlur}
           onChange={formik.handleChange}
           value={formik.values.label}
         />
@@ -187,6 +183,9 @@ export const ServiceTargetDrawer = (props: Props) => {
           onChange={(_, { value }) => formik.setFieldValue('protocol', value)}
           options={protocolOptions}
         />
+        <Divider spacingBottom={16} spacingTop={16} />
+        <Typography variant="h3">Algorithm</Typography>
+        <Typography mt={1}>{SERVICE_TARGET_COPY.Headers.Algorithm}</Typography>
         <Autocomplete
           onChange={(e, selected) =>
             formik.setFieldValue('load_balancing_policy', selected.value)
@@ -204,9 +203,6 @@ export const ServiceTargetDrawer = (props: Props) => {
               </li>
             );
           }}
-          textFieldProps={{
-            labelTooltipText: SERVICE_TARGET_COPY.Tooltips.Algorithm,
-          }}
           value={algorithmOptions.find(
             (option) => option.value === formik.values.load_balancing_policy
           )}
@@ -216,171 +212,159 @@ export const ServiceTargetDrawer = (props: Props) => {
           options={algorithmOptions}
         />
         <Divider spacingBottom={24} spacingTop={24} />
-        <Typography sx={{ marginBottom: 2 }} variant="h3">
+        <Typography mb={1} variant="h3">
           Endpoints
+        </Typography>
+        <Typography mb={2}>
+          The destination where the load balancer sends requests.{' '}
         </Typography>
         <EndpointTable
           endpoints={formik.values.endpoints}
           onRemove={onRemoveEndpoint}
         />
         <AddEndpointForm onAdd={onAddEndpoint} />
-        <Divider spacingBottom={12} spacingTop={24} />
-        <Stack alignItems="center" direction="row">
-          <Typography variant="h3">Service Target CA Certificate</Typography>
-          <TooltipIcon
-            status="help"
-            text={SERVICE_TARGET_COPY.Tooltips.Certificate}
-          />
-        </Stack>
-        <CertificateSelect
-          onChange={(cert) =>
-            formik.setFieldValue('certificate_id', cert?.id ?? null)
-          }
-          errorText={formik.errors.certificate_id}
-          filter={{ type: 'ca' }}
-          loadbalancerId={loadbalancerId}
-          value={formik.values.certificate_id}
-        />
-        <Divider spacingBottom={12} spacingTop={24} />
-        <Stack alignItems="center" direction="row">
-          <Typography variant="h3">Health Checks</Typography>
-          <TooltipIcon
-            status="help"
-            text={SERVICE_TARGET_COPY.Tooltips.Healthcheck.Description}
-          />
-        </Stack>
-        <FormControlLabel
-          control={
-            <Toggle
-              onChange={(_, checked) =>
-                formik.setFieldValue('healthcheck.interval', checked ? 10 : 0)
+        {formik.values.protocol === 'https' && (
+          <>
+            <Divider spacingBottom={12} spacingTop={24} />
+            <Stack spacing={1}>
+              <Typography variant="h3">
+                Service Target CA Certificate
+              </Typography>
+              <Typography>{SERVICE_TARGET_COPY.Headers.Certificate}</Typography>
+            </Stack>
+            <CertificateSelect
+              onChange={(cert) =>
+                formik.setFieldValue('certificate_id', cert?.id ?? null)
               }
-              checked={formik.values.healthcheck.interval !== 0}
+              errorText={formik.errors.certificate_id}
+              filter={{ type: 'ca' }}
+              loadbalancerId={loadbalancerId}
+              value={formik.values.certificate_id}
             />
+          </>
+        )}
+        <Divider spacingBottom={12} spacingTop={24} />
+        <Stack spacing={1}>
+          <Typography variant="h3">Health Checks</Typography>
+          <Typography>{SERVICE_TARGET_COPY.Headers.HealthCheck}</Typography>
+        </Stack>
+        <RadioGroup
+          onChange={(_, value) =>
+            formik.setFieldValue('healthcheck.protocol', value)
           }
-          label="Use Health Checks"
-        />
-        {formik.values.healthcheck.interval !== 0 && (
-          <Box data-qa-healthcheck-options>
-            <RadioGroup
-              onChange={(_, value) =>
-                formik.setFieldValue('healthcheck.protocol', value)
+          sx={{ marginBottom: '0px !important' }}
+          value={formik.values.healthcheck.protocol}
+        >
+          <FormLabel sx={{ alignItems: 'center', display: 'flex' }}>
+            Protocol
+            <TooltipIcon
+              status="help"
+              sxTooltipIcon={{ marginLeft: 1.5, padding: 0 }}
+              text={SERVICE_TARGET_COPY.Tooltips.Healthcheck.Protocol}
+            />
+          </FormLabel>
+          <FormControlLabel control={<Radio />} label="HTTP" value="http" />
+          <FormControlLabel control={<Radio />} label="TCP" value="tcp" />
+          <FormHelperText>{formik.errors.healthcheck?.protocol}</FormHelperText>
+        </RadioGroup>
+        <Stack direction="row" spacing={2}>
+          <TextField
+            InputProps={{
+              endAdornment: (
+                <InputAdornment position="start">seconds</InputAdornment>
+              ),
+            }}
+            errorText={formik.errors.healthcheck?.interval}
+            label="Interval"
+            labelTooltipText={SERVICE_TARGET_COPY.Tooltips.Healthcheck.Interval}
+            name="healthcheck.interval"
+            onChange={formik.handleChange}
+            type="number"
+            value={formik.values.healthcheck.interval}
+          />
+          <TextField
+            InputProps={{
+              endAdornment: (
+                <InputAdornment position="start">checks</InputAdornment>
+              ),
+            }}
+            errorText={formik.errors.healthcheck?.healthy_threshold}
+            label="Healthy Threshold"
+            labelTooltipText={SERVICE_TARGET_COPY.Tooltips.Healthcheck.Healthy}
+            name="healthcheck.healthy_threshold"
+            onChange={formik.handleChange}
+            type="number"
+            value={formik.values.healthcheck.healthy_threshold}
+          />
+        </Stack>
+        <Stack direction="row" spacing={2}>
+          <TextField
+            InputProps={{
+              endAdornment: (
+                <InputAdornment position="start">seconds</InputAdornment>
+              ),
+            }}
+            errorText={formik.errors.healthcheck?.timeout}
+            label="Timeout"
+            labelTooltipText={SERVICE_TARGET_COPY.Tooltips.Healthcheck.Timeout}
+            name="healthcheck.timeout"
+            onChange={formik.handleChange}
+            type="number"
+            value={formik.values.healthcheck.timeout}
+          />
+          <TextField
+            InputProps={{
+              endAdornment: (
+                <InputAdornment position="start">checks</InputAdornment>
+              ),
+            }}
+            labelTooltipText={
+              SERVICE_TARGET_COPY.Tooltips.Healthcheck.Unhealthy
+            }
+            errorText={formik.errors.healthcheck?.unhealthy_threshold}
+            label="Unhealthy Threshold"
+            name="healthcheck.unhealthy_threshold"
+            onChange={formik.handleChange}
+            type="number"
+            value={formik.values.healthcheck.unhealthy_threshold}
+          />
+        </Stack>
+        {formik.values.healthcheck.protocol === 'http' && (
+          <>
+            <TextField
+              errorText={
+                formik.touched.healthcheck?.path
+                  ? formik.errors.healthcheck?.path
+                  : undefined
               }
-              sx={{ marginBottom: '0px !important' }}
-              value={formik.values.healthcheck.protocol}
-            >
-              <FormLabel>
-                Protocol
-                <TooltipIcon
-                  status="help"
-                  sxTooltipIcon={{ marginLeft: 1.5, padding: 0 }}
-                  text={SERVICE_TARGET_COPY.Tooltips.Healthcheck.Protocol}
-                />
-              </FormLabel>
-              <FormControlLabel control={<Radio />} label="HTTP" value="http" />
-              <FormControlLabel control={<Radio />} label="TCP" value="tcp" />
-              <FormHelperText>
-                {formik.errors.healthcheck?.protocol}
-              </FormHelperText>
-            </RadioGroup>
-            <Stack direction="row" spacing={2}>
-              <TextField
-                InputProps={{
-                  endAdornment: (
-                    <InputAdornment position="start">seconds</InputAdornment>
-                  ),
-                }}
-                labelTooltipText={
-                  SERVICE_TARGET_COPY.Tooltips.Healthcheck.Interval
-                }
-                errorText={formik.errors.healthcheck?.interval}
-                label="Interval"
-                name="healthcheck.interval"
-                onChange={formik.handleChange}
-                type="number"
-                value={formik.values.healthcheck.interval}
-              />
-              <TextField
-                InputProps={{
-                  endAdornment: (
-                    <InputAdornment position="start">checks</InputAdornment>
-                  ),
-                }}
-                labelTooltipText={
-                  SERVICE_TARGET_COPY.Tooltips.Healthcheck.Healthy
-                }
-                errorText={formik.errors.healthcheck?.healthy_threshold}
-                label="Healthy Threshold"
-                name="healthcheck.healthy_threshold"
-                onChange={formik.handleChange}
-                type="number"
-                value={formik.values.healthcheck.healthy_threshold}
-              />
-            </Stack>
-            <Stack direction="row" spacing={2}>
-              <TextField
-                InputProps={{
-                  endAdornment: (
-                    <InputAdornment position="start">seconds</InputAdornment>
-                  ),
-                }}
-                labelTooltipText={
-                  SERVICE_TARGET_COPY.Tooltips.Healthcheck.Timeout
-                }
-                errorText={formik.errors.healthcheck?.timeout}
-                label="Timeout"
-                name="healthcheck.timeout"
-                onChange={formik.handleChange}
-                type="number"
-                value={formik.values.healthcheck.timeout}
-              />
-              <TextField
-                InputProps={{
-                  endAdornment: (
-                    <InputAdornment position="start">checks</InputAdornment>
-                  ),
-                }}
-                labelTooltipText={
-                  SERVICE_TARGET_COPY.Tooltips.Healthcheck.Unhealthy
-                }
-                errorText={formik.errors.healthcheck?.unhealthy_threshold}
-                label="Unhealthy Threshold"
-                name="healthcheck.unhealthy_threshold"
-                onChange={formik.handleChange}
-                type="number"
-                value={formik.values.healthcheck.unhealthy_threshold}
-              />
-            </Stack>
-            {formik.values.healthcheck.protocol === 'http' && (
-              <>
-                <TextField
-                  labelTooltipText={
-                    SERVICE_TARGET_COPY.Tooltips.Healthcheck.Path
-                  }
-                  errorText={formik.errors.healthcheck?.path}
-                  label="Health Check Path"
-                  name="healthcheck.path"
-                  onChange={formik.handleChange}
-                  optional
-                  value={formik.values.healthcheck.path}
-                />
-                <TextField
-                  labelTooltipText={
-                    SERVICE_TARGET_COPY.Tooltips.Healthcheck.Host
-                  }
-                  errorText={formik.errors.healthcheck?.host}
-                  label="Health Check Host"
-                  name="healthcheck.host"
-                  onChange={formik.handleChange}
-                  optional
-                  value={formik.values.healthcheck.host}
-                />
-              </>
-            )}
-          </Box>
+              label="Health Check Path"
+              labelTooltipText={SERVICE_TARGET_COPY.Tooltips.Healthcheck.Path}
+              name="healthcheck.path"
+              onBlur={formik.handleBlur}
+              onChange={formik.handleChange}
+              optional
+              placeholder="/"
+              value={formik.values.healthcheck.path}
+            />
+            <TextField
+              errorText={
+                formik.touched.healthcheck?.host
+                  ? formik.errors.healthcheck?.host
+                  : undefined
+              }
+              label="Health Check Host Header"
+              labelTooltipText={SERVICE_TARGET_COPY.Tooltips.Healthcheck.Host}
+              name="healthcheck.host"
+              onBlur={formik.handleBlur}
+              onChange={formik.handleChange}
+              placeholder="check.endpoint.org"
+              value={formik.values.healthcheck.host}
+            />
+          </>
         )}
         <ActionsPanel
           primaryButtonProps={{
+            disabled: isEditMode && !formik.dirty,
             label: `${isEditMode ? 'Save' : 'Create'} Service Target`,
             loading: formik.isSubmitting,
             type: 'submit',

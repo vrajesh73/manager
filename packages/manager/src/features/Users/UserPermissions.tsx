@@ -3,25 +3,29 @@ import {
   GrantLevel,
   GrantType,
   Grants,
+  User,
   getGrants,
+  getUser,
   updateGrants,
   updateUser,
 } from '@linode/api-v4/lib/account';
 import { APIError } from '@linode/api-v4/lib/types';
+import { Paper } from '@mui/material';
 import Grid from '@mui/material/Unstable_Grid2';
+import { QueryClient } from '@tanstack/react-query';
 import { WithSnackbarProps, withSnackbar } from 'notistack';
 import { compose, flatten, lensPath, omit, set } from 'ramda';
 import * as React from 'react';
 import { compose as recompose } from 'recompose';
 
 import { ActionsPanel } from 'src/components/ActionsPanel/ActionsPanel';
+import { Box } from 'src/components/Box';
 import { CircleProgress } from 'src/components/CircleProgress';
-import { Divider } from 'src/components/Divider';
+// import { Button } from 'src/components/Button/Button';
 import { DocumentTitleSegment } from 'src/components/DocumentTitle';
 import { Item } from 'src/components/EnhancedSelect/Select';
 import { FormControlLabel } from 'src/components/FormControlLabel';
 import { Notice } from 'src/components/Notice/Notice';
-import { Paper } from 'src/components/Paper';
 import { SelectionCard } from 'src/components/SelectionCard/SelectionCard';
 import { SafeTabPanel } from 'src/components/Tabs/SafeTabPanel';
 import { Tab } from 'src/components/Tabs/Tab';
@@ -30,26 +34,36 @@ import { TabPanels } from 'src/components/Tabs/TabPanels';
 import { Tabs } from 'src/components/Tabs/Tabs';
 import { Toggle } from 'src/components/Toggle/Toggle';
 import { Typography } from 'src/components/Typography';
-import withFlags, {
-  FeatureFlagConsumerProps,
-} from 'src/containers/withFeatureFlagConsumer.container';
+import {
+  WithFeatureFlagProps,
+  withFeatureFlags,
+} from 'src/containers/flags.container';
 import {
   WithQueryClientProps,
   withQueryClient,
 } from 'src/containers/withQueryClient.container';
+import { PARENT_USER, grantTypeMap } from 'src/features/Account/constants';
+import { accountQueries } from 'src/queries/account/queries';
 import { getAPIErrorOrDefault } from 'src/utilities/errorUtils';
 import { getAPIErrorFor } from 'src/utilities/getAPIErrorFor';
 import { scrollErrorIntoView } from 'src/utilities/scrollErrorIntoView';
 
-import { StyledDivWrapper, StyledSelect } from './UserPermissions.styles';
 import {
-  UserPermissionsEntitySection,
-  entityNameMap,
-} from './UserPermissionsEntitySection';
+  StyledCircleProgress,
+  StyledDivWrapper,
+  StyledHeaderGrid,
+  StyledPaper,
+  StyledPermPaper,
+  StyledSelect,
+  StyledSubHeaderGrid,
+  StyledUnrestrictedGrid,
+} from './UserPermissions.styles';
+import { UserPermissionsEntitySection } from './UserPermissionsEntitySection';
 interface Props {
+  accountUsername?: string;
   clearNewUser: () => void;
-  currentUser?: string;
-  username?: string;
+  currentUsername?: string;
+  queryClient: QueryClient;
 }
 
 interface TabInfo {
@@ -72,38 +86,34 @@ interface State {
   /* Large Account Support */
   showTabs?: boolean;
   tabs?: string[];
-  vpcEnabled: boolean;
+  userType: null | string;
 }
 
 type CombinedProps = Props &
   WithSnackbarProps &
   WithQueryClientProps &
-  FeatureFlagConsumerProps;
+  WithFeatureFlagProps;
 
 class UserPermissions extends React.Component<CombinedProps, State> {
   componentDidMount() {
     this.getUserGrants();
-
-    if (this.props.flags.vpc) {
-      this.setState({ vpcEnabled: true });
-      this.entityPerms.push('vpc');
-      this.globalBooleanPerms.push('add_vpcs');
-    }
+    this.getUserType();
   }
 
   componentDidUpdate(prevProps: CombinedProps) {
-    if (prevProps.username !== this.props.username) {
+    if (prevProps.currentUsername !== this.props.currentUsername) {
       this.getUserGrants();
+      this.getUserType();
     }
   }
 
   render() {
     const { loading } = this.state;
-    const { username } = this.props;
+    const { currentUsername } = this.props;
 
     return (
       <React.Fragment>
-        <DocumentTitleSegment segment={`${username} - Permissions`} />
+        <DocumentTitleSegment segment={`${currentUsername} - Permissions`} />
         {loading ? <CircleProgress /> : this.renderBody()}
       </React.Fragment>
     );
@@ -158,6 +168,7 @@ class UserPermissions extends React.Component<CombinedProps, State> {
     'domain',
     'longview',
     'database',
+    'vpc',
   ];
 
   entitySetAllTo = (entity: GrantType, value: GrantLevel) => () => {
@@ -192,9 +203,9 @@ class UserPermissions extends React.Component<CombinedProps, State> {
     );
 
   getUserGrants = () => {
-    const { username } = this.props;
-    if (username) {
-      getGrants(username)
+    const { currentUsername } = this.props;
+    if (currentUsername) {
+      getGrants(currentUsername)
         .then((grants) => {
           if (grants.global) {
             const { showTabs, tabs } = this.getTabInformation(grants);
@@ -229,18 +240,42 @@ class UserPermissions extends React.Component<CombinedProps, State> {
     }
   };
 
+  getUserType = async () => {
+    const { currentUsername } = this.props;
+
+    // Current user is the user whose permissions are currently being viewed.
+    if (currentUsername) {
+      try {
+        const user = await getUser(currentUsername);
+
+        this.setState({
+          userType: user.user_type,
+        });
+      } catch (error) {
+        this.setState({
+          errors: getAPIErrorOrDefault(
+            error,
+            'Unknown error occurred while fetching user permissions. Try again later.'
+          ),
+        });
+        scrollErrorIntoView();
+      }
+    }
+  };
+
   globalBooleanPerms = [
-    'add_linodes',
-    'add_nodebalancers',
-    'add_longview',
-    'longview_subscription',
-    'add_domains',
-    'add_stackscripts',
-    'add_images',
-    'add_volumes',
-    'add_firewalls',
     'add_databases',
+    'add_domains',
+    'add_firewalls',
+    'add_images',
+    'add_linodes',
+    'add_longview',
+    'add_nodebalancers',
+    'add_stackscripts',
+    'add_volumes',
+    'add_vpcs',
     'cancel_account',
+    'longview_subscription',
   ];
 
   globalPermOnChange = (perm: string) => (
@@ -251,23 +286,31 @@ class UserPermissions extends React.Component<CombinedProps, State> {
   };
 
   onChangeRestricted = () => {
-    const { username } = this.props;
+    const { currentUsername } = this.props;
     this.setState({
       errors: [],
       loadingGrants: true,
     });
-    if (username) {
-      updateUser(username, { restricted: !this.state.restricted })
+    if (currentUsername) {
+      updateUser(currentUsername, { restricted: !this.state.restricted })
         .then((user) => {
           this.setState({
             restricted: user.restricted,
           });
-        })
-        .then(() => {
+          // refresh the data on /account/users so it is accurate
+          this.props.queryClient.invalidateQueries(
+            accountQueries.users._ctx.paginated._def
+          );
+          // Update the user directly in the cache
+          this.props.queryClient.setQueryData<User>(
+            accountQueries.users._ctx.user(user.username).queryKey,
+            user
+          );
           // unconditionally sets this.state.loadingGrants to false
           this.getUserGrants();
-          // refresh the data on /account/users so it is accurate
-          this.props.queryClient.invalidateQueries('account-users');
+          this.props.enqueueSnackbar('User permissions successfully saved.', {
+            variant: 'success',
+          });
         })
         .catch((errResponse) => {
           this.setState({
@@ -311,20 +354,22 @@ class UserPermissions extends React.Component<CombinedProps, State> {
   };
 
   renderBillingPerm = () => {
-    const { grants } = this.state;
+    const { grants, userType } = this.state;
+    const isChildUser = userType === 'child';
+    const isProxyUser = userType === 'proxy';
+
     if (!(grants && grants.global)) {
       return null;
     }
 
     return (
-      <StyledDivWrapper>
+      <StyledDivWrapper data-qa-billing-section>
         <Grid
           sx={(theme) => ({
             marginTop: theme.spacing(2),
             paddingBottom: 0,
           })}
           container
-          data-qa-billing-section
           spacing={2}
         >
           <Grid>
@@ -344,23 +389,31 @@ class UserPermissions extends React.Component<CombinedProps, State> {
           <SelectionCard
             checked={grants.global.account_access === null}
             data-qa-billing-access="None"
+            disabled={isProxyUser}
             heading="None"
             onClick={this.billingPermOnClick(null)}
             subheadings={['The user cannot view any billing information.']}
           />
           <SelectionCard
-            checked={grants.global.account_access === 'read_only'}
+            checked={
+              grants.global.account_access === 'read_only' ||
+              (isChildUser && Boolean(this.state.grants?.global.account_access))
+            }
             data-qa-billing-access="Read Only"
+            disabled={isProxyUser}
             heading="Read Only"
             onClick={this.billingPermOnClick('read_only')}
             subheadings={['Can view invoices and billing info.']}
           />
           <SelectionCard
+            checked={
+              grants.global.account_access === 'read_write' && !isChildUser
+            }
             subheadings={[
               'Can make payments, update contact and billing info, and will receive copies of all invoices and payment emails.',
             ]}
-            checked={grants.global.account_access === 'read_write'}
             data-qa-billing-access="Read-Write"
+            disabled={isChildUser}
             heading="Read-Write"
             onClick={this.billingPermOnClick('read_write')}
           />
@@ -370,54 +423,60 @@ class UserPermissions extends React.Component<CombinedProps, State> {
   };
 
   renderBody = () => {
-    const { currentUser, username } = this.props;
+    const { accountUsername, currentUsername } = this.props;
     const { errors, restricted } = this.state;
     const hasErrorFor = getAPIErrorFor({ restricted: 'Restricted' }, errors);
     const generalError = hasErrorFor('none');
+    const isProxyUser = this.state.userType === 'proxy';
 
     return (
-      <React.Fragment>
+      <Box sx={{ marginTop: (theme) => theme.spacing(4) }}>
         {generalError && (
           <Notice spacingTop={8} text={generalError} variant="error" />
         )}
-        <Grid
-          alignItems="center"
-          container
-          spacing={2}
-          style={{ width: 'auto' }}
-        >
-          <Grid>
-            <Typography
-              sx={(theme) => ({
-                [theme.breakpoints.down('md')]: {
-                  paddingLeft: theme.spacing(),
-                },
-              })}
-              data-qa-restrict-access={restricted}
-              variant="h2"
-            >
-              Full Account Access:
-            </Typography>
+        <StyledPaper>
+          <Grid
+            alignItems="center"
+            container
+            spacing={2}
+            sx={{ margin: 0, width: 'auto' }}
+          >
+            <StyledHeaderGrid>
+              <Typography
+                sx={{
+                  textTransform: 'capitalize',
+                }}
+                data-qa-restrict-access={restricted}
+                variant="h2"
+              >
+                {isProxyUser ? PARENT_USER : 'General'} Permissions
+              </Typography>
+            </StyledHeaderGrid>
+            <StyledSubHeaderGrid>
+              <Toggle
+                tooltipText={
+                  currentUsername === accountUsername
+                    ? 'You cannot restrict the current active user.'
+                    : ''
+                }
+                aria-label="Toggle Full Account Access"
+                checked={!restricted}
+                disabled={currentUsername === accountUsername}
+                onChange={this.onChangeRestricted}
+              />
+            </StyledSubHeaderGrid>
+            <Grid sx={{ padding: 0 }}>
+              <Typography
+                sx={{ fontFamily: (theme) => theme.font.bold }}
+                variant="subtitle2"
+              >
+                Full Account Access
+              </Typography>
+            </Grid>
           </Grid>
-          <Grid>
-            <Typography variant="h2">{!restricted ? 'On' : 'Off'}</Typography>
-          </Grid>
-          <Grid>
-            <Toggle
-              tooltipText={
-                username === currentUser
-                  ? 'You cannot restrict the current active user.'
-                  : ''
-              }
-              checked={!restricted}
-              disabled={username === currentUser}
-              onChange={this.onChangeRestricted}
-              sx={{ marginRight: '3px' }}
-            />
-          </Grid>
-        </Grid>
+        </StyledPaper>
         {restricted ? this.renderPermissions() : this.renderUnrestricted()}
-      </React.Fragment>
+      </Box>
     );
   };
 
@@ -432,13 +491,15 @@ class UserPermissions extends React.Component<CombinedProps, State> {
       add_nodebalancers: 'Can add NodeBalancers to this account ($)',
       add_stackscripts: 'Can create StackScripts under this account',
       add_volumes: 'Can add Block Storage Volumes to this account ($)',
+      add_vpcs: 'Can add VPCs to this account',
       cancel_account: 'Can cancel the entire account',
       longview_subscription:
         'Can modify this account\u{2019}s Longview subscription ($)',
     };
 
-    if (this.state.vpcEnabled) {
-      permDescriptionMap['add_vpcs'] = 'Can add VPCs to this account';
+    if (this.state.userType === 'parent') {
+      permDescriptionMap['child_account_access'] =
+        'Enable child account access';
     }
 
     return (
@@ -456,25 +517,27 @@ class UserPermissions extends React.Component<CombinedProps, State> {
           })}
           label={permDescriptionMap[perm]}
         />
-        <Divider />
       </Grid>
     );
   };
 
   renderGlobalPerms = () => {
     const { grants, isSavingGlobal } = this.state;
+    if (
+      this.state.userType === 'parent' &&
+      !this.globalBooleanPerms.includes('child_account_access')
+    ) {
+      this.globalBooleanPerms.push('child_account_access');
+    }
     return (
-      <Paper
-        sx={(theme) => ({
-          marginTop: theme.spacing(2),
-        })}
-        data-qa-global-section
-      >
+      <StyledPermPaper data-qa-global-section>
         <Typography
           data-qa-permissions-header="Global Permissions"
-          variant="h2"
+          variant="subtitle2"
         >
-          Global Permissions
+          Configure the specific rights and privileges this user has within the
+          account.{<br />}Remember that permissions related to actions with the
+          '$' symbol may incur additional charges.
         </Typography>
         <Grid
           sx={(theme) => ({
@@ -503,14 +566,14 @@ class UserPermissions extends React.Component<CombinedProps, State> {
           this.cancelPermsType('global'),
           isSavingGlobal
         )}
-      </Paper>
+      </StyledPermPaper>
     );
   };
 
   renderPermissions = () => {
-    const { loadingGrants } = this.state;
-    if (loadingGrants) {
-      return <CircleProgress />;
+    const { loading, loadingGrants } = this.state;
+    if (loadingGrants || loading) {
+      return <StyledCircleProgress />;
     } else {
       return (
         <React.Fragment>
@@ -535,7 +598,7 @@ class UserPermissions extends React.Component<CombinedProps, State> {
     });
 
     return (
-      <Paper
+      <StyledPermPaper
         sx={(theme) => ({
           marginTop: theme.spacing(2),
         })}
@@ -571,7 +634,7 @@ class UserPermissions extends React.Component<CombinedProps, State> {
             <Tabs>
               <TabList>
                 {this.state.tabs?.map((entity) => (
-                  <Tab key={`${entity}-tab`}>{entityNameMap[entity]}</Tab>
+                  <Tab key={`${entity}-tab`}>{grantTypeMap[entity]}</Tab>
                 ))}
               </TabList>
               <TabPanels>
@@ -607,31 +670,30 @@ class UserPermissions extends React.Component<CombinedProps, State> {
           this.cancelPermsType('entity'),
           isSavingEntity
         )}
-      </Paper>
+      </StyledPermPaper>
     );
   };
 
   renderUnrestricted = () => {
-    /* TODO: render all permissions disabled with this message above */
     return (
-      <Paper
-        sx={(theme) => ({
-          marginTop: theme.spacing(2),
-          padding: theme.spacing(3),
-        })}
-      >
-        <Typography data-qa-unrestricted-msg>
-          This user has unrestricted access to the account.
-        </Typography>
+      <Paper>
+        <StyledUnrestrictedGrid>
+          <Typography data-qa-unrestricted-msg>
+            This user has unrestricted access to the account.
+          </Typography>
+          {/* <Button buttonType="primary" onClick={this.onChangeRestricted}>
+          Save
+        </Button> */}
+        </StyledUnrestrictedGrid>
       </Paper>
     );
   };
 
   savePermsType = (type: string) => () => {
     this.setState({ errors: undefined });
-    const { clearNewUser, username } = this.props;
+    const { clearNewUser, currentUsername } = this.props;
     const { grants } = this.state;
-    if (!username || !(grants && grants[type])) {
+    if (!currentUsername || !(grants && grants[type])) {
       return this.setState({
         errors: [
           {
@@ -645,7 +707,7 @@ class UserPermissions extends React.Component<CombinedProps, State> {
 
     if (type === 'global') {
       this.setState({ isSavingGlobal: true });
-      updateGrants(username, { global: grants.global })
+      updateGrants(currentUsername, { global: grants.global })
         .then((grantsResponse) => {
           this.setState(
             compose<State, State, State>(
@@ -658,9 +720,19 @@ class UserPermissions extends React.Component<CombinedProps, State> {
           const { tabs } = this.getTabInformation(grantsResponse);
           this.setState({ isSavingGlobal: false, tabs });
 
-          this.props.enqueueSnackbar('Successfully saved global permissions', {
-            variant: 'success',
-          });
+          this.props.enqueueSnackbar(
+            'General user permissions successfully saved.',
+            {
+              variant: 'success',
+            }
+          );
+
+          // Update the user's grants directly in the cache
+          this.props.queryClient.setQueriesData<Grants>(
+            accountQueries.users._ctx.user(currentUsername)._ctx.grants
+              .queryKey,
+            grantsResponse
+          );
         })
         .catch((errResponse) => {
           this.setState({
@@ -679,9 +751,9 @@ class UserPermissions extends React.Component<CombinedProps, State> {
 
   saveSpecificGrants = () => {
     this.setState({ errors: undefined, isSavingEntity: true });
-    const { username } = this.props;
+    const { currentUsername } = this.props;
     const { grants } = this.state;
-    if (!username || !grants) {
+    if (!currentUsername || !grants) {
       return this.setState({
         errors: [
           {
@@ -694,7 +766,7 @@ class UserPermissions extends React.Component<CombinedProps, State> {
 
     // You would think ramda could do a TS omit, but I guess not
     const requestPayload = omit(['global'], grants) as Omit<Grants, 'global'>;
-    updateGrants(username, requestPayload)
+    updateGrants(currentUsername, requestPayload)
       .then((grantsResponse) => {
         /* build array of update fns */
         let updateFns = this.entityPerms.map((entity) => {
@@ -711,8 +783,10 @@ class UserPermissions extends React.Component<CombinedProps, State> {
           this.setState((compose as any)(...updateFns));
         }
         this.props.enqueueSnackbar(
-          'Successfully saved entity-specific permissions',
-          { variant: 'success' }
+          'Entity-specific user permissions successfully saved.',
+          {
+            variant: 'success',
+          }
         );
         // In the chance a new type entity was added to the account, re-calculate what tabs need to be shown.
         const { tabs } = this.getTabInformation(grantsResponse);
@@ -754,12 +828,12 @@ class UserPermissions extends React.Component<CombinedProps, State> {
     loading: true,
     loadingGrants: false,
     setAllPerm: 'null',
-    vpcEnabled: false,
+    userType: null,
   };
 }
 
 export default recompose<CombinedProps, Props>(
   withSnackbar,
   withQueryClient,
-  withFlags
+  withFeatureFlags
 )(UserPermissions);

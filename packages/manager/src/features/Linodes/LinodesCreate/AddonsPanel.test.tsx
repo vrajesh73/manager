@@ -1,12 +1,12 @@
 import { waitFor } from '@testing-library/react';
 import React from 'react';
 
+import { imageFactory, linodeTypeFactory } from 'src/factories';
+import { http, HttpResponse, server } from 'src/mocks/testServer';
 import { getMonthlyBackupsPrice } from 'src/utilities/pricing/backups';
 import { renderWithTheme, wrapWithTheme } from 'src/utilities/testHelpers';
-import { rest, server } from 'src/mocks/testServer';
 
 import { AddonsPanel, AddonsPanelProps } from './AddonsPanel';
-import { imageFactory, linodeTypeFactory } from 'src/factories';
 
 const type = linodeTypeFactory.build({
   addons: {
@@ -62,6 +62,12 @@ const props: AddonsPanelProps = {
       ipv4: ['45.56.75.98'],
       ipv6: '2600:3c00::f03c:93ff:fe85:576d/128',
       label: 'test_instance',
+      placement_group: {
+        affinity_type: 'anti_affinity',
+        id: 1,
+        is_strict: true,
+        label: 'test',
+      },
       region: 'us-central',
       specs: {
         disk: 51200,
@@ -101,6 +107,12 @@ const props: AddonsPanelProps = {
       ipv4: ['192.168.139.183', '139.144.17.202'],
       ipv6: '2600:3c04::f03c:93ff:fe75:0612/128',
       label: 'debian-ca-central',
+      placement_group: {
+        affinity_type: 'anti_affinity',
+        id: 1,
+        is_strict: true,
+        label: 'test',
+      },
       region: 'ca-central',
       specs: {
         disk: 25600,
@@ -139,6 +151,12 @@ const props: AddonsPanelProps = {
       ipv4: ['45.79.74.95'],
       ipv6: '2600:3c01::f03c:93ff:fe75:e4f9/128',
       label: 'almalinux-us-west',
+      placement_group: {
+        affinity_type: 'anti_affinity',
+        id: 1,
+        is_strict: true,
+        label: 'test',
+      },
       region: 'us-west',
       specs: {
         disk: 25600,
@@ -175,8 +193,8 @@ const attachVLANTestId = 'attach-vlan';
 describe('AddonsPanel', () => {
   beforeEach(() => {
     server.use(
-      rest.get('*/images/*', (req, res, ctx) => {
-        return res(ctx.json(imageFactory.build()));
+      http.get('*/images/*', () => {
+        return HttpResponse.json(imageFactory.build());
       })
     );
   });
@@ -305,5 +323,28 @@ describe('AddonsPanel', () => {
         wrapper.queryByTestId(privateIPContextualCopyTestId)
       ).not.toBeInTheDocument();
     });
+  });
+
+  it('should render a warning notice if isEdgeRegionSelected is true and disable backups and private ip checkbox', () => {
+    const propsWithEdgeRegionSelected = {
+      ...props,
+      isEdgeRegionSelected: true,
+    };
+    const { getByTestId } = renderWithTheme(
+      <AddonsPanel {...propsWithEdgeRegionSelected} />
+    );
+    expect(getByTestId('notice-warning')).toBeInTheDocument();
+    expect(getByTestId('private_ip')).toHaveAttribute('aria-disabled', 'true');
+    expect(getByTestId('backups')).toHaveAttribute('aria-disabled', 'true');
+  });
+  it('should not render a warning notice if isEdgeRegionSelected is false', () => {
+    const propsWithEdgeRegionNotSelected = {
+      ...props,
+      isEdgeRegionSelected: false,
+    };
+    const { queryByTestId } = renderWithTheme(
+      <AddonsPanel {...propsWithEdgeRegionNotSelected} />
+    );
+    expect(queryByTestId('notice-warning')).not.toBeInTheDocument();
   });
 });

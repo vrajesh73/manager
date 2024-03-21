@@ -9,10 +9,11 @@ import { TableCell } from 'src/components/TableCell';
 import { TableHead } from 'src/components/TableHead';
 import { TableRow } from 'src/components/TableRow';
 import { TableRowEmpty } from 'src/components/TableRowEmpty/TableRowEmpty';
-import { ExtendedType } from 'src/utilities/extendType';
 import { PLAN_SELECTION_NO_REGION_SELECTED_MESSAGE } from 'src/utilities/pricing/constants';
 
 import { KubernetesPlanSelection } from './KubernetesPlanSelection';
+
+import type { TypeWithAvailability } from 'src/features/components/PlansPanel/types';
 
 const tableCells = [
   { cellName: 'Plan', center: false, noWrap: false, testId: 'plan' },
@@ -29,9 +30,9 @@ export interface KubernetesPlanContainerProps {
   getTypeCount: (planId: string) => number;
   onAdd?: (key: string, value: number) => void;
   onSelect: (key: string) => void;
-  plans: ExtendedType[];
+  plans: TypeWithAvailability[];
   selectedId?: string;
-  selectedRegionID?: string;
+  selectedRegionId?: string;
   updatePlanCount: (planId: string, newCount: number) => void;
 }
 
@@ -45,27 +46,32 @@ export const KubernetesPlanContainer = (
     onSelect,
     plans,
     selectedId,
-    selectedRegionID,
+    selectedRegionId,
     updatePlanCount,
   } = props;
 
-  const shouldDisplayNoRegionSelectedMessage = !selectedRegionID;
+  const shouldDisplayNoRegionSelectedMessage = !selectedRegionId;
 
   const renderPlanSelection = React.useCallback(() => {
-    return plans.map((plan, id) => (
-      <KubernetesPlanSelection
-        disabled={disabled}
-        getTypeCount={getTypeCount}
-        idx={id}
-        key={id}
-        onAdd={onAdd}
-        onSelect={onSelect}
-        selectedId={selectedId}
-        selectedRegionID={selectedRegionID}
-        type={plan}
-        updatePlanCount={updatePlanCount}
-      />
-    ));
+    return plans.map((plan, id) => {
+      return (
+        <KubernetesPlanSelection
+          isLimitedAvailabilityPlan={
+            disabled ? false : plan.isLimitedAvailabilityPlan
+          } // No need for tooltip due to all plans being unavailable in region
+          disabled={disabled}
+          getTypeCount={getTypeCount}
+          idx={id}
+          key={id}
+          onAdd={onAdd}
+          onSelect={onSelect}
+          selectedId={selectedId}
+          selectedRegionId={selectedRegionId}
+          type={plan}
+          updatePlanCount={updatePlanCount}
+        />
+      );
+    });
   }, [
     disabled,
     getTypeCount,
@@ -73,7 +79,7 @@ export const KubernetesPlanContainer = (
     onSelect,
     plans,
     selectedId,
-    selectedRegionID,
+    selectedRegionId,
     updatePlanCount,
   ]);
 

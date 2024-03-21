@@ -1,6 +1,6 @@
 import { styled } from '@mui/material/styles';
-import cx from 'classnames';
 import * as React from 'react';
+import { useStyles } from 'tss-react/mui';
 
 import { Button, ButtonProps } from 'src/components/Button/Button';
 
@@ -8,8 +8,8 @@ import { Box, BoxProps } from '../Box';
 
 interface ActionButtonsProps extends ButtonProps {
   'data-node-idx'?: number;
-  'data-testid'?: string;
   'data-qa-form-data-loading'?: boolean;
+  'data-testid'?: string;
   label: string;
 }
 
@@ -33,9 +33,10 @@ export const ActionsPanel = (props: ActionPanelProps) => {
     className,
     primaryButtonProps,
     secondaryButtonProps,
-
     ...rest
   } = props;
+
+  const { cx } = useStyles();
 
   const primaryButtonDataQAProp = `data-qa-${primaryButtonProps?.['data-testid']}`;
   const secondaryButtonDataQAProp = `data-qa-${secondaryButtonProps?.['data-testid']}`;
@@ -76,9 +77,6 @@ const StyledBox = styled(Box)(({ theme: { spacing } }) => ({
   },
   '& > :only-child': {
     marginRight: 0,
-  },
-  '& > button': {
-    marginBottom: spacing(1),
   },
   justifyContent: 'flex-end',
   marginTop: spacing(1),

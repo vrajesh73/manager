@@ -2,6 +2,15 @@ import { number, object, string, array } from 'yup';
 
 const LABEL_REQUIRED = 'Label is required.';
 
+const matchFieldOptions = [
+  'always_match',
+  'path_prefix',
+  'path_regex',
+  'query',
+  'header',
+  'method',
+];
+
 export const CreateCertificateSchema = object({
   certificate: string().required('Certificate is required.'),
   key: string().when('type', {
@@ -26,16 +35,12 @@ export const UpdateCertificateSchema = object().shape(
   [['certificate', 'key']]
 );
 
-const CertificateEntrySchema = object({
+export const CertificateEntrySchema = object({
   id: number()
     .typeError('Certificate ID must be a number.')
     .required('Certificate ID is required.')
     .min(0, 'Certificate ID is required.'),
   hostname: string().required('A Host Header is required.'),
-});
-
-export const CertificateConfigSchema = object({
-  certificates: array(CertificateEntrySchema),
 });
 
 export const EndpointSchema = object({
@@ -50,12 +55,24 @@ export const EndpointSchema = object({
 
 const HealthCheckSchema = object({
   protocol: string().oneOf(['http', 'tcp']),
-  interval: number().min(0),
-  timeout: number().min(0),
-  unhealthy_threshold: number().min(0),
-  healthy_threshold: number().min(0),
+  interval: number()
+    .typeError('Interval must be a number.')
+    .min(1, 'Interval must be greater than zero.'),
+  timeout: number()
+    .typeError('Timeout must be a number.')
+    .min(1, 'Timeout must be greater than zero.'),
+  unhealthy_threshold: number()
+    .typeError('Unhealthy Threshold must be a number.')
+    .min(1, 'Unhealthy Threshold must be greater than zero.'),
+  healthy_threshold: number()
+    .typeError('Healthy Threshold must be a number.')
+    .min(1, 'Healthy Threshold must be greater than zero.'),
   path: string().nullable(),
-  host: string().nullable(),
+  host: string().when('protocol', {
+    is: 'tcp',
+    then: (o) => o.nullable(),
+    otherwise: (o) => o.required('Health Check host is required.'),
+  }),
 });
 
 export const CreateServiceTargetSchema = object({
@@ -100,25 +117,20 @@ const RouteServiceTargetSchema = object({
     .required('Percent is required.'),
 });
 
-const TCPMatchConditionSchema = object({
+const MatchConditionSchema = object({
   hostname: string().nullable(),
+  match_field: string()
+    .oneOf(matchFieldOptions)
+    .required('Match field is required.'),
+  match_value: string().required('Match value is required.'),
+  session_stickiness_cookie: string().nullable(),
+  session_stickiness_ttl: number()
+    .min(0, 'TTL must be greater than or equal to 0.')
+    .typeError('TTL must be a number.')
+    .nullable(),
 });
 
-const HTTPMatchConditionSchema = TCPMatchConditionSchema.concat(
-  object({
-    match_field: string()
-      .oneOf(['path_prefix', 'query', 'header', 'method', 'host'])
-      .required('Match field is required.'),
-    match_value: string().required('Match value is required.'),
-    session_stickiness_cookie: string().nullable(),
-    session_stickiness_ttl: number()
-      .min(0, 'TTL must be greater than or equal to 0.')
-      .typeError('TTL must be a number.')
-      .nullable(),
-  })
-);
-
-const BaseRuleSchema = object({
+export const TCPRuleSchema = object({
   service_targets: array(RouteServiceTargetSchema)
     .test(
       'sum-of-percentage',
@@ -138,15 +150,9 @@ const BaseRuleSchema = object({
     .required(),
 });
 
-export const HTTPRuleSchema = BaseRuleSchema.concat(
+export const HTTPRuleSchema = TCPRuleSchema.concat(
   object({
-    match_condition: HTTPMatchConditionSchema,
-  })
-);
-
-export const TCPRuleSchema = BaseRuleSchema.concat(
-  object({
-    match_condition: TCPMatchConditionSchema,
+    match_condition: MatchConditionSchema,
   })
 );
 
@@ -214,7 +220,7 @@ const CreateLoadBalancerServiceTargetSchema = object({
   percentage: number().integer().required(),
   label: string().required(),
   endpoints: array().of(CreateLoadBalancerEndpointSchema).required(),
-  certificate_id: number().integer(),
+  certificate_id: number().integer().nullable(),
   load_balancing_policy: string()
     .oneOf(['round_robin', 'least_request', 'ring_hash', 'random', 'maglev'])
     .required(),
@@ -222,15 +228,13 @@ const CreateLoadBalancerServiceTargetSchema = object({
 });
 
 // Rule Schema
-const CreateLoadBalancerRuleSchema = object({
+export const CreateLoadBalancerRuleSchema = object({
   match_condition: object().shape({
-    hostname: string().required(),
-    match_field: string()
-      .oneOf(['path_prefix', 'host', 'query', 'hostname', 'header', 'method'])
-      .required(),
+    hostname: string().nullable(),
+    match_field: string().oneOf(matchFieldOptions).required(),
     match_value: string().required(),
-    session_stickiness_cookie: string(),
-    session_stickiness_ttl: number().integer(),
+    session_stickiness_cookie: string().nullable(),
+    session_stickiness_ttl: number().integer().nullable(),
   }),
   service_targets: array().of(CreateLoadBalancerServiceTargetSchema).required(),
 });
@@ -253,7 +257,7 @@ export const ConfigurationSchema = object({
     then: (o) =>
       o.of(
         object({
-          label: string().required(),
+          label: string().required(LABEL_REQUIRED),
           protocol: string().oneOf(['tcp']).required(),
           rules: array().of(CreateLoadBalancerRuleSchema).required(),
         })
@@ -271,13 +275,13 @@ export const ConfigurationSchema = object({
 
 export const CreateLoadBalancerSchema = object({
   label: string().min(1, 'Label must not be empty.').required(LABEL_REQUIRED),
-  // tags: array().of(string()), // TODO: AGLB - Should confirm on this with API team. Assuming this will be out of scope for Beta.
+  // tags: array().of(string()), // TODO: ACLB - Should confirm on this with API team. Assuming this will be out of scope for Beta.
   regions: array().of(string()).required(),
   configurations: array().of(ConfigurationSchema),
 });
 
 /**
- * TODO: AGLB - remove this create schema
+ * TODO: ACLB - remove this create schema
  */
 export const CreateBasicLoadbalancerSchema = object({
   label: string()

@@ -1,13 +1,18 @@
+import HelpOutline from '@mui/icons-material/HelpOutline';
 import * as React from 'react';
 
+import { Chip } from 'src/components/Chip';
 import { Currency } from 'src/components/Currency';
 import { FormControlLabel } from 'src/components/FormControlLabel';
 import { Hidden } from 'src/components/Hidden';
+import { IconButton } from 'src/components/IconButton';
 import { Radio } from 'src/components/Radio/Radio';
 import { SelectionCard } from 'src/components/SelectionCard/SelectionCard';
 import { TableCell } from 'src/components/TableCell';
+import { Tooltip } from 'src/components/Tooltip';
 import { TooltipIcon } from 'src/components/TooltipIcon';
 import { LINODE_NETWORK_IN } from 'src/constants';
+import { useFlags } from 'src/hooks/useFlags';
 import { useLinodeQuery } from 'src/queries/linodes/linodes';
 import {
   PRICE_ERROR_TOOLTIP_TEXT,
@@ -17,20 +22,22 @@ import { renderMonthlyPriceToCorrectDecimalPlace } from 'src/utilities/pricing/d
 import { getLinodeRegionPrice } from 'src/utilities/pricing/linodes';
 import { convertMegabytesTo } from 'src/utilities/unitConversions';
 
+import { LIMITED_AVAILABILITY_TEXT } from './constants';
 import { StyledChip, StyledRadioCell } from './PlanSelection.styles';
 import { StyledDisabledTableRow } from './PlansPanel.styles';
 
 import type { PlanSelectionType } from './types';
-import type { PriceObject, Region } from '@linode/api-v4';
-import type { LinodeTypeClass } from '@linode/api-v4/lib/linodes';
+import type { LinodeTypeClass, PriceObject, Region } from '@linode/api-v4';
 
-interface Props {
+export interface PlanSelectionProps {
   currentPlanHeading?: string;
   disabled?: boolean;
   disabledClasses?: LinodeTypeClass[];
   header?: string;
+  hideDisabledHelpIcons?: boolean;
   idx: number;
   isCreate?: boolean;
+  isLimitedAvailabilityPlan: boolean;
   linodeID?: number | undefined;
   onSelect: (key: string) => void;
   selectedDiskSize?: number;
@@ -47,13 +54,15 @@ const getDisabledClass = (
   return disabledClasses.includes(typeClass);
 };
 
-export const PlanSelection = (props: Props) => {
+export const PlanSelection = (props: PlanSelectionProps) => {
   const {
     currentPlanHeading,
     disabled,
     disabledClasses,
+    hideDisabledHelpIcons,
     idx,
     isCreate,
+    isLimitedAvailabilityPlan,
     linodeID,
     onSelect,
     selectedDiskSize,
@@ -62,6 +71,17 @@ export const PlanSelection = (props: Props) => {
     showTransfer,
     type,
   } = props;
+
+  const flags = useFlags();
+
+  // Determine if the plan should be disabled solely due to being a 512GB plan
+  const disabled512GbPlan =
+    type.label.includes('512GB') &&
+    Boolean(flags.disableLargestGbPlans) &&
+    !disabled;
+
+  const isDisabled = isLimitedAvailabilityPlan || disabled512GbPlan;
+
   const diskSize = selectedDiskSize ? selectedDiskSize : 0;
   const planTooSmall = diskSize > type.disk;
   const tooltip = planTooSmall
@@ -86,9 +106,9 @@ export const PlanSelection = (props: Props) => {
       ? `${type.formattedLabel} this plan is too small for resize`
       : type.formattedLabel;
 
-  // DC Dynamic price logic - DB creation flow is out of scope
-  const isDatabaseCreateFlow = location.pathname.includes('/databases/create');
-  const price: PriceObject | undefined = !isDatabaseCreateFlow
+  // DC Dynamic price logic - DB creation and DB resize flows are currently out of scope
+  const isDatabaseFlow = location.pathname.includes('/databases');
+  const price: PriceObject | undefined = !isDatabaseFlow
     ? getLinodeRegionPrice(type, selectedRegionId)
     : type.price;
   type.subHeadings[0] = `$${renderMonthlyPriceToCorrectDecimalPlace(
@@ -101,14 +121,14 @@ export const PlanSelection = (props: Props) => {
       <Hidden lgDown={isCreate} mdDown={!isCreate}>
         <StyledDisabledTableRow
           onClick={() =>
-            !isSamePlan && !disabled && !isDisabledClass
+            !isSamePlan && !isDisabled && !isDisabledClass && !planTooSmall
               ? onSelect(type.id)
               : undefined
           }
-          aria-disabled={isSamePlan || planTooSmall || isDisabledClass}
+          aria-disabled={isSamePlan || planTooSmall || isDisabled || disabled}
           aria-label={rowAriaLabel}
           data-qa-plan-row={type.formattedLabel}
-          disabled={isSamePlan || planTooSmall || isDisabledClass}
+          disabled={isSamePlan || planTooSmall || isDisabled || disabled}
           key={type.id}
         >
           <StyledRadioCell>
@@ -118,10 +138,13 @@ export const PlanSelection = (props: Props) => {
                   <Radio
                     checked={
                       !disabled &&
+                      !isDisabled &&
                       !planTooSmall &&
                       type.id === String(selectedId)
                     }
-                    disabled={planTooSmall || disabled || isDisabledClass}
+                    disabled={
+                      planTooSmall || disabled || isDisabled || isDisabledClass
+                    }
                     id={type.id}
                     onChange={() => onSelect(type.id)}
                   />
@@ -133,7 +156,24 @@ export const PlanSelection = (props: Props) => {
             )}
           </StyledRadioCell>
           <TableCell data-qa-plan-name>
-            {type.heading}{' '}
+            {type.heading} &nbsp;
+            {isDisabled && !hideDisabledHelpIcons && (
+              <Tooltip
+                data-qa-tooltip={LIMITED_AVAILABILITY_TEXT}
+                data-testid="limited-availability"
+                placement="right-start"
+                title={LIMITED_AVAILABILITY_TEXT}
+              >
+                <IconButton disableRipple size="small">
+                  <HelpOutline
+                    sx={{
+                      height: 16,
+                      width: 16,
+                    }}
+                  />
+                </IconButton>
+              </Tooltip>
+            )}
             {(isSamePlan || type.id === selectedLinodePlanType) && (
               <StyledChip
                 aria-label="This is your current plan"
@@ -155,7 +195,7 @@ export const PlanSelection = (props: Props) => {
           </TableCell>
           <TableCell
             data-qa-monthly
-            errorCell={!price?.monthly}
+            errorCell={typeof price?.monthly !== 'number'}
             errorText={!price?.monthly ? PRICE_ERROR_TOOLTIP_TEXT : undefined}
           >
             {' '}
@@ -163,7 +203,7 @@ export const PlanSelection = (props: Props) => {
           </TableCell>
           <TableCell
             data-qa-hourly
-            errorCell={!price?.hourly}
+            errorCell={typeof price?.hourly !== 'number'}
             errorText={!price?.hourly ? PRICE_ERROR_TOOLTIP_TEXT : undefined}
           >
             {isGPU ? (
@@ -199,13 +239,35 @@ export const PlanSelection = (props: Props) => {
       {/* Displays SelectionCard for small screens */}
       <Hidden lgUp={isCreate} mdUp={!isCreate}>
         <SelectionCard
+          disabled={
+            planTooSmall ||
+            isSamePlan ||
+            disabled ||
+            isDisabled ||
+            isDisabledClass
+          }
+          headingDecoration={
+            isSamePlan || type.id === selectedLinodePlanType ? (
+              <StyledChip
+                aria-label="This is your current plan"
+                data-qa-current-plan
+                label="Current Plan"
+              />
+            ) : undefined
+          }
+          subheadings={[
+            ...type.subHeadings,
+            isDisabled ? <Chip label="Limited Availability" /> : '',
+          ]}
+          sxTooltip={{
+            // There's no easy way to override the margin or transform due to inline styles and existing specificity rules.
+            transform: 'translate(-10px, 20px) !important',
+          }}
           checked={type.id === String(selectedId)}
-          disabled={planTooSmall || isSamePlan || disabled || isDisabledClass}
           heading={type.heading}
           key={type.id}
           onClick={() => onSelect(type.id)}
-          subheadings={type.subHeadings}
-          tooltip={tooltip}
+          tooltip={isDisabled ? LIMITED_AVAILABILITY_TEXT : tooltip}
         />
       </Hidden>
     </React.Fragment>

@@ -1,6 +1,7 @@
 import Close from '@mui/icons-material/Close';
 import * as React from 'react';
 
+import { Box } from 'src/components/Box';
 import { IconButton } from 'src/components/IconButton';
 
 import {
@@ -13,6 +14,9 @@ import {
   StyledScrollBox,
 } from './RemovableSelectionsList.style';
 
+import type { SxProps, Theme } from '@mui/material';
+import type { ButtonProps } from 'src/components/Button/Button';
+
 export type RemovableItem = {
   id: number;
   label: string;
@@ -23,9 +27,22 @@ export type RemovableItem = {
 
 export interface RemovableSelectionsListProps {
   /**
+   * The custom label component
+   */
+  LabelComponent?: React.ComponentType<{ selection: RemovableItem }>;
+  /**
+   * Overrides the render of the X Button
+   * Has no effect if isRemovable is false
+   */
+  RemoveButton?: (props: ButtonProps) => JSX.Element;
+  /**
    * The descriptive text to display above the list
    */
-  headerText: string;
+  headerText: JSX.Element | string;
+  /**
+   * The id of the list component
+   */
+  id?: string;
   /**
    * If false, hide the remove button
    */
@@ -56,13 +73,20 @@ export interface RemovableSelectionsListProps {
    * The data to display in the list
    */
   selectionData: RemovableItem[];
+  /**
+   * Additional styles to apply to the component
+   */
+  sx?: SxProps<Theme>;
 }
 
 export const RemovableSelectionsList = (
   props: RemovableSelectionsListProps
 ) => {
   const {
+    LabelComponent,
+    RemoveButton,
     headerText,
+    id,
     isRemovable = true,
     maxHeight = 427,
     maxWidth = 416,
@@ -70,6 +94,7 @@ export const RemovableSelectionsList = (
     onRemove,
     preferredDataLabel,
     selectionData,
+    sx,
   } = props;
 
   // used to determine when to display a box-shadow to indicate scrollability
@@ -87,46 +112,58 @@ export const RemovableSelectionsList = (
   };
 
   return (
-    <>
+    <Box data-testid={id} sx={sx}>
       <SelectedOptionsHeader>{headerText}</SelectedOptionsHeader>
       {selectionData.length > 0 ? (
         <StyledBoxShadowWrapper
           displayShadow={listHeight > maxHeight}
+          id={id}
           maxWidth={maxWidth}
         >
           <StyledScrollBox maxHeight={maxHeight} maxWidth={maxWidth}>
-            <SelectedOptionsList isRemovable={isRemovable} ref={listRef}>
+            <SelectedOptionsList
+              data-qa-selection-list
+              isRemovable={isRemovable}
+              ref={listRef}
+            >
               {selectionData.map((selection) => (
                 <SelectedOptionsListItem alignItems="center" key={selection.id}>
                   <StyledLabel>
-                    {preferredDataLabel
-                      ? selection[preferredDataLabel]
-                      : selection.label}
+                    {LabelComponent ? (
+                      <LabelComponent selection={selection} />
+                    ) : preferredDataLabel ? (
+                      selection[preferredDataLabel]
+                    ) : (
+                      selection.label
+                    )}
                   </StyledLabel>
-                  {isRemovable && (
-                    <IconButton
-                      aria-label={`remove ${
-                        preferredDataLabel
-                          ? selection[preferredDataLabel]
-                          : selection.label
-                      }`}
-                      disableRipple
-                      onClick={() => handleOnClick(selection)}
-                      size="medium"
-                    >
-                      <Close />
-                    </IconButton>
-                  )}
+                  {isRemovable &&
+                    (RemoveButton ? (
+                      <RemoveButton onClick={() => handleOnClick(selection)} />
+                    ) : (
+                      <IconButton
+                        aria-label={`remove ${
+                          preferredDataLabel
+                            ? selection[preferredDataLabel]
+                            : selection.label
+                        }`}
+                        disableRipple
+                        onClick={() => handleOnClick(selection)}
+                        size="medium"
+                      >
+                        <Close />
+                      </IconButton>
+                    ))}
                 </SelectedOptionsListItem>
               ))}
             </SelectedOptionsList>
           </StyledScrollBox>
         </StyledBoxShadowWrapper>
       ) : (
-        <StyledNoAssignedLinodesBox maxWidth={maxWidth}>
+        <StyledNoAssignedLinodesBox id={id} maxWidth={maxWidth}>
           <StyledLabel>{noDataText}</StyledLabel>
         </StyledNoAssignedLinodesBox>
       )}
-    </>
+    </Box>
   );
 };

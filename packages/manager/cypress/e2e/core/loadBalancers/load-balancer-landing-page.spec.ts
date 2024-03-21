@@ -1,5 +1,5 @@
 /**
- * @file Integration tests for Akamai Global Load Balancer navigation.
+ * @file Integration tests for Akamai Cloud Load Balancer navigation.
  */
 
 import {
@@ -13,27 +13,28 @@ import { randomLabel } from 'support/util/random';
 import {
   mockGetLoadBalancer,
   mockGetLoadBalancers,
+  mockDeleteLoadBalancerError,
+  mockDeleteLoadBalancer,
 } from 'support/intercepts/load-balancers';
 import type { Loadbalancer } from '@linode/api-v4';
 import { chooseRegion } from 'support/util/regions';
-import { getRegionById } from 'support/util/regions';
 
 /**
- * Navigates to the AGLB landing page using breadcrumb navigation.
+ * Navigates to the ACLB landing page using breadcrumb navigation.
  *
  * Asserts that the URL has updated to reflect navigation.
  */
 const returnToLandingPage = () => {
   ui.entityHeader.find().within(() => {
-    cy.findByText('Global Load Balancers').should('be.visible').click();
+    cy.findByText('Cloud Load Balancers').should('be.visible').click();
   });
 
   cy.url().should('endWith', '/loadbalancers');
 };
 
-describe('Akamai Global Load Balancer landing page', () => {
+describe('Akamai Cloud Load Balancer landing page', () => {
   /*
-   * - Confirms that load balancers are listed on the AGLB landing page.
+   * - Confirms that load balancers are listed on the ACLB landing page.
    * - Confirms that clicking a load balancer label directs to its details pages.
    * - Confirms that Create Loadbalancer button is present and enabled.
    * - Confirms that load balancer action menu items are present.
@@ -55,9 +56,9 @@ describe('Akamai Global Load Balancer landing page', () => {
       }),
     ];
 
-    // TODO Delete feature flag mocks when AGLB feature flag goes away.
+    // TODO Delete feature flag mocks when ACLB feature flag goes away.
     mockAppendFeatureFlags({
-      aglb: makeFeatureFlagData(true),
+      aclb: makeFeatureFlagData(true),
     }).as('getFeatureFlags');
     mockGetFeatureFlagClientstream().as('getClientStream');
     mockGetLoadBalancers(loadbalancerMocks).as('getLoadBalancers');
@@ -72,7 +73,7 @@ describe('Akamai Global Load Balancer landing page', () => {
         .should('be.visible')
         .closest('tr')
         .within(() => {
-          // TODO: AGLB - Confirm that regions from the API are listed for load balancer
+          // TODO: ACLB - Confirm that regions from the API are listed for load balancer
           // loadbalancerMock.regions.forEach((loadbalancerRegion: string) => {
           //   const regionLabel = getRegionById(loadbalancerRegion).label;
           //   cy.findByText(regionLabel, { exact: false }).should('be.visible');
@@ -94,7 +95,7 @@ describe('Akamai Global Load Balancer landing page', () => {
         .should('be.visible')
         .closest('tr')
         .within(() => {
-          // TODO: AGLB - Confirm that regions from the API are listed for load balancer
+          // TODO: ACLB - Confirm that regions from the API are listed for load balancer
           // loadbalancerMock.regions.forEach((loadbalancerRegion: string) => {
           //   const regionLabel = getRegionById(loadbalancerRegion).label;
           //   cy.findByText(regionLabel, { exact: false }).should('be.visible');
@@ -125,5 +126,155 @@ describe('Akamai Global Load Balancer landing page', () => {
         .should('be.visible')
         .should('be.enabled');
     });
+  });
+});
+
+describe('Delete', () => {
+  /*
+   * - Confirms that Deleting a load balancer from the ACLB landing page.
+   * - Confirms ACLB landing page reverts to its empty state when all of the load balancers have been deleted.
+   */
+  it('Delete a Load Balancer from landing page.', () => {
+    const chosenRegion = chooseRegion();
+    const loadBalancerConfiguration = configurationFactory.build();
+    const loadbalancerMocks = [
+      loadbalancerFactory.build({
+        id: 1,
+        label: randomLabel(),
+        configurations: [
+          {
+            id: loadBalancerConfiguration.id,
+            label: loadBalancerConfiguration.label,
+          },
+        ],
+        regions: ['us-east', chosenRegion.id],
+      }),
+    ];
+
+    // TODO Delete feature flag mocks when ACLB feature flag goes away.
+    mockAppendFeatureFlags({
+      aclb: makeFeatureFlagData(true),
+    }).as('getFeatureFlags');
+    mockGetFeatureFlagClientstream().as('getClientStream');
+    mockGetLoadBalancers(loadbalancerMocks).as('getLoadBalancers');
+    mockGetLoadBalancer(loadbalancerMocks[0]);
+
+    const loadbalancer = loadbalancerMocks[0];
+
+    cy.visitWithLogin('/loadbalancers');
+    cy.wait(['@getFeatureFlags', '@getClientStream', '@getLoadBalancers']);
+
+    ui.actionMenu
+      .findByTitle(`Action menu for Load Balancer ${loadbalancer.label}`)
+      .should('be.visible')
+      .click();
+
+    ui.actionMenuItem.findByTitle('Delete').should('be.visible').click();
+
+    // Mock the API call for deleting the load balancer.
+    mockDeleteLoadBalancer(loadbalancer.id).as('deleteLoadBalancer');
+
+    mockGetLoadBalancers([]).as('getLoadBalancers');
+
+    // Handle the delete confirmation dialog.
+    ui.dialog
+      .findByTitle(`Delete ${loadbalancer.label}?`)
+      .should('be.visible')
+      .within(() => {
+        cy.findByLabelText('Load Balancer Label')
+          .should('be.visible')
+          .click()
+          .type(loadbalancer.label);
+
+        ui.buttonGroup
+          .findButtonByTitle('Delete')
+          .should('be.visible')
+          .should('be.enabled')
+          .click();
+      });
+
+    cy.wait(['@deleteLoadBalancer', '@getLoadBalancers']);
+
+    // Confirm that user is navigated to the empty loadbalancer empty state landing page.
+
+    cy.get('[data-qa-header]')
+      .should('be.visible')
+      .should('have.text', 'Cloud Load Balancers');
+
+    cy.findByText(
+      'Scalable Layer 4 and Layer 7 load balancer to route and manage enterprise traffic between clients and your distributed applications and networks globally.'
+    ).should('be.visible');
+    cy.findByText('Getting Started Guides').should('be.visible');
+
+    // Create button exists and navigates user to create page.
+    ui.button
+      .findByTitle('Create Cloud Load Balancer')
+      .should('be.visible')
+      .should('be.enabled');
+
+    cy.findByText(loadbalancer.label).should('not.exist');
+  });
+
+  it('Shows API errors when deleting a load balancer', () => {
+    const chosenRegion = chooseRegion();
+    const loadBalancerConfiguration = configurationFactory.build();
+    const loadbalancerMocks = [
+      loadbalancerFactory.build({
+        id: 1,
+        label: randomLabel(),
+        configurations: [
+          {
+            id: loadBalancerConfiguration.id,
+            label: loadBalancerConfiguration.label,
+          },
+        ],
+        regions: ['us-east', chosenRegion.id],
+      }),
+    ];
+
+    // TODO Delete feature flag mocks when ACLB feature flag goes away.
+    mockAppendFeatureFlags({
+      aclb: makeFeatureFlagData(true),
+    }).as('getFeatureFlags');
+    mockGetFeatureFlagClientstream().as('getClientStream');
+    mockGetLoadBalancers(loadbalancerMocks).as('getLoadBalancers');
+    mockGetLoadBalancer(loadbalancerMocks[0]);
+
+    const loadbalancer = loadbalancerMocks[0];
+
+    cy.visitWithLogin('/loadbalancers');
+    cy.wait(['@getFeatureFlags', '@getClientStream', '@getLoadBalancers']);
+
+    ui.actionMenu
+      .findByTitle(`Action menu for Load Balancer ${loadbalancer.label}`)
+      .should('be.visible')
+      .click();
+
+    ui.actionMenuItem.findByTitle('Delete').should('be.visible').click();
+    // Mock the API call for deleting the load balancer.
+    mockDeleteLoadBalancerError(loadbalancer.id, 'Control Plane Error').as(
+      'deleteLoadBalancer'
+    );
+
+    mockGetLoadBalancers([]).as('getLoadBalancers');
+
+    // Handle the delete confirmation dialog.
+    ui.dialog
+      .findByTitle(`Delete ${loadbalancer.label}?`)
+      .should('be.visible')
+      .within(() => {
+        cy.findByLabelText('Load Balancer Label')
+          .should('be.visible')
+          .click()
+          .type(loadbalancer.label);
+
+        ui.buttonGroup.findButtonByTitle('Delete').click();
+
+        cy.wait(['@deleteLoadBalancer']);
+
+        cy.findByText('Control Plane Error').should('be.visible');
+
+        ui.buttonGroup.findButtonByTitle('Cancel').click();
+      });
   });
 });

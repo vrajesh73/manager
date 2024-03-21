@@ -14,7 +14,7 @@ import { TooltipIcon } from 'src/components/TooltipIcon';
 import { Typography } from 'src/components/Typography';
 import { UserDataAccordionProps } from 'src/features/Linodes/LinodesCreate/UserDataAccordion/UserDataAccordion';
 import { useFlags } from 'src/hooks/useFlags';
-import { useAccount } from 'src/queries/account';
+import { useAccount } from 'src/queries/account/account';
 import { useImageQuery } from 'src/queries/images';
 import { CreateTypes } from 'src/store/linodeCreate/linodeCreate.actions';
 import { isFeatureEnabled } from 'src/utilities/accountCapabilities';
@@ -38,6 +38,7 @@ export interface AddonsPanelProps {
   handleVLANChange: (updatedInterface: Interface) => void;
   ipamAddress: string;
   ipamError?: string;
+  isEdgeRegionSelected?: boolean;
   isPrivateIPChecked: boolean;
   labelError?: string;
   linodesData?: Linode[];
@@ -60,6 +61,7 @@ export const AddonsPanel = React.memo((props: AddonsPanelProps) => {
     handleVLANChange,
     ipamAddress,
     ipamError,
+    isEdgeRegionSelected,
     isPrivateIPChecked,
     labelError,
     linodesData,
@@ -192,6 +194,12 @@ export const AddonsPanel = React.memo((props: AddonsPanelProps) => {
             <TooltipIcon status="help" text={backupsDisabledReason} />
           )}
         </Typography>
+        {isEdgeRegionSelected && (
+          <Notice
+            text="Backups and Private IP are currently not available for Edge regions."
+            variant="warning"
+          />
+        )}
         {showBackupsWarning && (
           <Notice variant="warning">
             Linodes must have a disk formatted with an ext3 or ext4 file system
@@ -201,12 +209,19 @@ export const AddonsPanel = React.memo((props: AddonsPanelProps) => {
         <StyledFormControlLabel
           control={
             <Checkbox
+              checked={
+                (accountBackups && !isEdgeRegionSelected) || props.backups
+              }
               data-qa-check-backups={
                 accountBackups ? 'auto backup enabled' : 'auto backup disabled'
               }
-              checked={accountBackups || props.backups}
+              disabled={
+                accountBackups ||
+                disabled ||
+                isBareMetal ||
+                isEdgeRegionSelected
+              }
               data-testid="backups"
-              disabled={accountBackups || disabled || isBareMetal}
               onChange={changeBackups}
             />
           }
@@ -218,7 +233,7 @@ export const AddonsPanel = React.memo((props: AddonsPanelProps) => {
           }
         />
         <StyledTypography variant="body1">
-          {accountBackups ? (
+          {accountBackups && !isEdgeRegionSelected ? (
             <React.Fragment>
               You have enabled automatic backups for your account. This Linode
               will automatically have backups enabled. To change this setting,{' '}
@@ -239,7 +254,7 @@ export const AddonsPanel = React.memo((props: AddonsPanelProps) => {
               checked={isPrivateIPChecked}
               data-qa-check-private-ip
               data-testid="private_ip"
-              disabled={disabled}
+              disabled={disabled || isEdgeRegionSelected}
               onChange={togglePrivateIP}
             />
           }
@@ -250,8 +265,8 @@ export const AddonsPanel = React.memo((props: AddonsPanelProps) => {
             data-testid="private-ip-contextual-copy"
             variant="body1"
           >
-            Use this for a backend node to a NodeBalancer. Use VPC instead for
-            private communication between your Linodes.
+            Use Private IP for a backend node to a NodeBalancer. Use VPC instead
+            for private communication between your Linodes.
           </StyledTypography>
         )}
       </Paper>

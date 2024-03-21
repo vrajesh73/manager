@@ -1,9 +1,8 @@
 import { PaymentMethod } from '@linode/api-v4';
 import { ActivePromotion } from '@linode/api-v4/lib/account/types';
-import { GridSize } from '@mui/material/Grid';
 import Grid from '@mui/material/Unstable_Grid2';
-import { Breakpoint } from '@mui/material/styles';
 import { useTheme } from '@mui/material/styles';
+import { Breakpoint } from '@mui/material/styles';
 import * as React from 'react';
 import { useHistory, useLocation, useRouteMatch } from 'react-router-dom';
 
@@ -14,7 +13,7 @@ import { Divider } from 'src/components/Divider';
 import { TooltipIcon } from 'src/components/TooltipIcon';
 import { Typography } from 'src/components/Typography';
 import { useAccountManagement } from 'src/hooks/useAccountManagement';
-import { useNotificationsQuery } from 'src/queries/accountNotifications';
+import { useNotificationsQuery } from 'src/queries/account/notifications';
 import { useGrants } from 'src/queries/profile';
 import { isWithinDays } from 'src/utilities/date';
 
@@ -22,6 +21,8 @@ import { BillingPaper } from '../../BillingDetail';
 import PaymentDrawer from './PaymentDrawer';
 import PromoDialog from './PromoDialog';
 import { PromoDisplay } from './PromoDisplay';
+
+import type { GridSize } from '@mui/material';
 
 interface BillingSummaryProps {
   balance: number;

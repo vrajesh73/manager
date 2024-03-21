@@ -37,18 +37,26 @@ interface TaxCollectionBanner {
   regions?: TaxCollectionRegion[];
 }
 
+interface PlacementGroupsFlag {
+  beta: boolean;
+  enabled: boolean;
+}
+
 type OneClickApp = Record<string, string>;
 
 export interface Flags {
-  aglb: boolean;
-  aglbFullCreateFlow: boolean;
+  aclb: boolean;
+  aclbFullCreateFlow: boolean;
   apiMaintenance: APIMaintenance;
   databaseBeta: boolean;
+  databaseResize: boolean;
   databases: boolean;
-  dcGetWell: boolean;
+  disableLargestGbPlans: boolean;
   firewallNodebalancer: boolean;
+  gecko: boolean;
   ipv6Sharing: boolean;
-  kubernetesDashboardAvailability: boolean;
+  linodeCloneUiChanges: boolean;
+  linodeCreateRefactor: boolean;
   linodeCreateWithFirewall: boolean;
   mainContentBanner: MainContentBanner;
   metadata: boolean;
@@ -56,20 +64,18 @@ export interface Flags {
   oneClickApps: OneClickApp;
   oneClickAppsDocsOverride: Record<string, Doc[]>;
   parentChildAccountAccess: boolean;
+  placementGroups: PlacementGroupsFlag;
   productInformationBanners: ProductInformationBannerFlag[];
   promos: boolean;
   promotionalOffers: PromotionalOffer[];
   recharts: boolean;
   referralBannerText: ReferralBannerText;
-  regionDropdown: boolean;
   selfServeBetas: boolean;
-  soldOutSingapore: boolean;
-  soldOutTokyo: boolean;
+  soldOutChips: boolean;
   taxBanner: TaxBanner;
   taxCollectionBanner: TaxCollectionBanner;
   taxes: Taxes;
   tpaProviders: Provider[];
-  unifiedMigrations: boolean;
   vpc: boolean;
   cloudView: boolean;
 }
@@ -143,6 +149,7 @@ export type ProductInformationBannerLocation =
   | 'Managed'
   | 'NodeBalancers'
   | 'Object Storage'
+  | 'Placement Groups'
   | 'StackScripts'
   | 'VPC'
   | 'Volumes';

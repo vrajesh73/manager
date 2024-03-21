@@ -4,11 +4,7 @@ import { apiMatcher } from 'support/util/intercepts';
 import { ui } from 'support/ui';
 import { cleanUp } from 'support/util/cleanup';
 import { authenticate } from 'support/api/authentication';
-import {
-  mockAppendFeatureFlags,
-  mockGetFeatureFlagClientstream,
-} from 'support/intercepts/feature-flags';
-import { makeFeatureFlagData } from 'support/util/feature-flags';
+import { mockGetFeatureFlagClientstream } from 'support/intercepts/feature-flags';
 
 authenticate();
 describe('resize linode', () => {
@@ -17,9 +13,6 @@ describe('resize linode', () => {
   });
 
   it('resizes a linode by increasing size: warm migration', () => {
-    mockAppendFeatureFlags({
-      unifiedMigrations: makeFeatureFlagData(true),
-    }).as('getFeatureFlags');
     mockGetFeatureFlagClientstream().as('getClientStream');
 
     createLinode().then((linode) => {
@@ -33,7 +26,7 @@ describe('resize linode', () => {
       getClick('[id="g6-standard-4"]');
       cy.get('[data-qa-radio="warm"]').find('input').should('be.checked');
       cy.get('[data-testid="textfield-input"]').type(linode.label);
-      cy.get('[data-qa-resize="true"]').click();
+      cy.get('[data-qa-resize="true"]').should('be.enabled').click();
       cy.wait('@linodeResize');
 
       // TODO: Unified Migration: [M3-7115] - Replace with copy from API '../notifications.py'
@@ -44,9 +37,6 @@ describe('resize linode', () => {
   });
 
   it('resizes a linode by increasing size: cold migration', () => {
-    mockAppendFeatureFlags({
-      unifiedMigrations: makeFeatureFlagData(true),
-    }).as('getFeatureFlags');
     mockGetFeatureFlagClientstream().as('getClientStream');
     createLinode().then((linode) => {
       cy.intercept(
@@ -60,7 +50,7 @@ describe('resize linode', () => {
       cy.get('[data-qa-radio="cold"]').click();
       cy.get('[data-qa-radio="cold"]').find('input').should('be.checked');
       cy.get('[data-testid="textfield-input"]').type(linode.label);
-      cy.get('[data-qa-resize="true"]').click();
+      cy.get('[data-qa-resize="true"]').should('be.enabled').click();
       cy.wait('@linodeResize');
 
       // TODO: Unified Migration: [M3-7115] - Replace with copy from API '../notifications.py'
@@ -71,9 +61,6 @@ describe('resize linode', () => {
   });
 
   it('resizes a linode by increasing size when offline: cold migration', () => {
-    mockAppendFeatureFlags({
-      unifiedMigrations: makeFeatureFlagData(true),
-    }).as('getFeatureFlags');
     mockGetFeatureFlagClientstream().as('getClientStream');
     createLinode().then((linode) => {
       cy.visitWithLogin(`/linodes/${linode.id}`);
@@ -109,7 +96,7 @@ describe('resize linode', () => {
         .should('be.checked')
         .should('be.disabled');
       cy.get('[data-testid="textfield-input"]').type(linode.label);
-      cy.get('[data-qa-resize="true"]').click();
+      cy.get('[data-qa-resize="true"]').should('be.enabled').click();
       cy.wait('@linodeResize');
 
       // TODO: Unified Migration: [M3-7115] - Replace with copy from API '../notifications.py'
@@ -135,7 +122,7 @@ describe('resize linode', () => {
       containsVisible('Linode 2 GB');
       getClick('[id="g6-standard-1"]');
       cy.get('[data-testid="textfield-input"]').type(linode.label);
-      cy.get('[data-qa-resize="true"]').click();
+      cy.get('[data-qa-resize="true"]').should('be.enabled').click();
       cy.wait('@linodeResize');
       // Failed to reduce the size of the linode
       cy.contains(
@@ -197,7 +184,7 @@ describe('resize linode', () => {
       containsVisible('Linode 2 GB');
       getClick('[id="g6-standard-1"]');
       cy.get('[data-testid="textfield-input"]').type(linode.label);
-      cy.get('[data-qa-resize="true"]').click();
+      cy.get('[data-qa-resize="true"]').should('be.enabled').click();
       cy.wait('@linodeResize');
       cy.contains(
         'Your Linode will soon be automatically powered off, migrated, and restored to its previous state (booted or powered off).'

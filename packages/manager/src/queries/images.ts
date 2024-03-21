@@ -21,13 +21,13 @@ import {
   useMutation,
   useQuery,
   useQueryClient,
-} from 'react-query';
+} from '@tanstack/react-query';
 
-import { EventWithStore } from 'src/events';
+import { EventHandlerData } from 'src/hooks/useEventHandlers';
 import { getAll } from 'src/utilities/getAll';
 
 import { doesItemExistInPaginatedStore, updateInPaginatedStore } from './base';
-import { queryKey as PROFILE_QUERY_KEY } from './profile';
+import { profileQueries } from './profile';
 
 export const queryKey = 'images';
 
@@ -53,9 +53,9 @@ export const useCreateImageMutation = () => {
     },
     {
       onSuccess() {
-        queryClient.invalidateQueries(`${queryKey}-list`);
+        queryClient.invalidateQueries([`${queryKey}-list`]);
         // If a restricted user creates an entity, we must make sure grants are up to date.
-        queryClient.invalidateQueries([PROFILE_QUERY_KEY, 'grants']);
+        queryClient.invalidateQueries(profileQueries.grants.queryKey);
       },
     }
   );
@@ -74,7 +74,7 @@ export const useUpdateImageMutation = () => {
     {
       onSuccess(image) {
         updateInPaginatedStore<Image>(
-          `${queryKey}-list`,
+          [`${queryKey}-list`],
           image.id,
           image,
           queryClient
@@ -91,7 +91,7 @@ export const useDeleteImageMutation = () => {
     ({ imageId }) => deleteImage(imageId),
     {
       onSuccess() {
-        queryClient.invalidateQueries(`${queryKey}-list`);
+        queryClient.invalidateQueries([`${queryKey}-list`]);
       },
     }
   );
@@ -99,7 +99,7 @@ export const useDeleteImageMutation = () => {
 
 // Remove Image from cache
 export const removeImageFromCache = (queryClient: QueryClient) =>
-  queryClient.invalidateQueries(`${queryKey}-list`);
+  queryClient.invalidateQueries([`${queryKey}-list`]);
 
 // Get all Images
 export const getAllImages = (
@@ -126,22 +126,25 @@ export const useAllImagesQuery = (
 export const useUploadImageQuery = (payload: ImageUploadPayload) =>
   useMutation<UploadImageResponse, APIError[]>(() => uploadImage(payload));
 
-export const imageEventsHandler = ({ event, queryClient }: EventWithStore) => {
+export const imageEventsHandler = ({
+  event,
+  queryClient,
+}: EventHandlerData) => {
   const { action, entity, status } = event;
 
   // Keep the getAll query up to date so that when we have to use it, it contains accurate data
-  queryClient.invalidateQueries(`${queryKey}-all`);
+  queryClient.invalidateQueries([`${queryKey}-all`]);
 
   switch (action) {
     case 'image_delete':
       if (
         doesItemExistInPaginatedStore(
-          `${queryKey}-list`,
+          [`${queryKey}-list`],
           entity!.id,
           queryClient
         )
       ) {
-        queryClient.invalidateQueries(`${queryKey}-list`);
+        queryClient.invalidateQueries([`${queryKey}-list`]);
       }
       return;
 
@@ -152,7 +155,7 @@ export const imageEventsHandler = ({ event, queryClient }: EventWithStore) => {
     case 'disk_imagize':
       if (status === 'failed' && event.secondary_entity) {
         updateInPaginatedStore<Image>(
-          `${queryKey}-list`,
+          [`${queryKey}-list`],
           event.secondary_entity.id,
           {},
           queryClient
@@ -165,7 +168,7 @@ export const imageEventsHandler = ({ event, queryClient }: EventWithStore) => {
         event.secondary_entity
       ) {
         updateInPaginatedStore<Image>(
-          `${queryKey}-list`,
+          [`${queryKey}-list`],
           `private/${event.secondary_entity.id}`,
           {
             status: 'available',
@@ -181,7 +184,7 @@ export const imageEventsHandler = ({ event, queryClient }: EventWithStore) => {
         (async () =>
           await getImage(`private/${event.entity?.id}`).then(() => {
             updateInPaginatedStore<Image>(
-              `${queryKey}-list`,
+              [`${queryKey}-list`],
               `private/${event.entity?.id}`,
               {
                 status: 'available',

@@ -1,9 +1,9 @@
 import KeyboardArrowDown from '@mui/icons-material/KeyboardArrowDown';
+import { Theme, useTheme } from '@mui/material/styles';
 import {
   default as _TextField,
   StandardTextFieldProps,
 } from '@mui/material/TextField';
-import { Theme } from '@mui/material/styles';
 import { clamp } from 'ramda';
 import * as React from 'react';
 import { makeStyles } from 'tss-react/mui';
@@ -63,9 +63,6 @@ const useStyles = makeStyles()((theme: Theme) => ({
   root: {
     marginTop: 0,
   },
-  wrapper: {
-    marginTop: theme.spacing(2),
-  },
 }));
 
 interface BaseProps {
@@ -73,6 +70,10 @@ interface BaseProps {
    * className to apply to the underlying TextField component
    */
   className?: string;
+  /**
+   * Props applied to the root element
+   */
+  containerProps?: BoxProps;
   /**
    * Data attributes are applied to the underlying TextField component for testing purposes
    */
@@ -146,10 +147,6 @@ interface BaseProps {
    */
   trimmed?: boolean;
   value?: Value;
-  /**
-   * Props applied to the root element
-   */
-  containerProps?: BoxProps;
 }
 
 type Value = null | number | string | undefined;
@@ -176,6 +173,51 @@ export type TextFieldProps = BaseProps &
   LabelToolTipProps &
   InputToolTipProps;
 
+/**
+### Overview
+
+Text fields allow users to enter text into a UI.
+
+### Usage
+
+- Input fields should be sized to the data being entered (ex. the entry for a street address should be wider than a zip code).
+- Ensure that the field can accommodate at least one more character than the maximum number to be entered.
+
+### Rules
+
+- Every input must have a descriptive label of what that field is.
+- Required fields should include the text “(Required)” as part of the input label.
+- If most fields are required, then indicate the optional fields with the text “(Optional)” instead.
+- Avoid long labels; use succinct, short and descriptive labels (a word or two) so users can quickly scan your form. <br/> Label text shouldn’t take up multiple lines.
+- Placeholder text is the text that users see before they interact with a field. It should be a useful guide to the input type and format <br/> Don’t make the user guess what format they should use for the field. Tell this information up front.
+
+### Best Practices
+
+- A single column form with input fields stacked sequentially is the easiest to understand and leads to the highest success rate. Input fields in multiple columns can be overlooked or add unnecessary visual clutter.
+- Grouping related inputs (ex. mailing address) under a subhead or rule can add meaning and make the form feel more manageable.
+- Avoid breaking a single form into multiple “papers” unless those sections are truly independent of each other.
+- Consider sizing the input field to the data being entered (ex. the field for a street address should be wider than the field for a zip code). Balance this goal with the visual benefits of fields of the same length. A somewhat outsized input that aligns with the fields above and below it might be the best choice.
+
+## Textfield errors
+
+### Overview
+
+Error messages are an indicator of system status: they let users know that a hurdle was encountered and give solutions to fix it. Users should not have to memorize instructions in order to fix the error.
+
+### Main Principles
+
+- Should be easy to notice and understand.
+- Should give solutions to how to fix the error.
+- Users should not have to memorize instructions in order to fix the error.
+- Long error messages for short text fields can extend beyond the text field.
+- When the user has finished filling in a field and clicks the submit button, an indicator should appear if the field contains an error. Use red to differentiate error fields from normal ones.
+
+## Number Text Fields
+
+### Overview
+
+Number Text Fields are used for strictly numerical input
+ */
 export const TextField = (props: TextFieldProps) => {
   const { classes, cx } = useStyles();
 
@@ -220,6 +262,7 @@ export const TextField = (props: TextFieldProps) => {
   } = props;
 
   const [_value, setValue] = React.useState<Value>(value);
+  const theme = useTheme();
 
   React.useEffect(() => {
     setValue(value);
@@ -313,13 +356,25 @@ export const TextField = (props: TextFieldProps) => {
         containerProps?.className
       )}
     >
-      <Box display="flex">
+      <Box
+        className={cx({
+          'visually-hidden': hideLabel,
+        })}
+        sx={{
+          marginBottom: theme.spacing(1),
+          ...(!noMarginTop && { marginTop: theme.spacing(2) }),
+        }}
+        alignItems={'center'}
+        data-testid="inputLabelWrapper"
+        display="flex"
+      >
         <InputLabel
           className={cx({
             [classes.noTransform]: true,
-            [classes.wrapper]: noMarginTop ? false : true,
-            'visually-hidden': hideLabel,
           })}
+          sx={{
+            marginBottom: 0,
+          }}
           data-qa-textfield-label={label}
           htmlFor={validInputId}
         >
@@ -333,7 +388,8 @@ export const TextField = (props: TextFieldProps) => {
         {labelTooltipText && (
           <TooltipIcon
             sxTooltipIcon={{
-              padding: '8px 0px 0px 8px',
+              marginLeft: `${theme.spacing(0.5)}`,
+              padding: `${theme.spacing(0.5)}`,
             }}
             status="help"
             text={labelTooltipText}
@@ -424,7 +480,8 @@ export const TextField = (props: TextFieldProps) => {
         {tooltipText && (
           <TooltipIcon
             sxTooltipIcon={{
-              padding: '0px 0px 0px 8px',
+              margin: '0px 0px 0px 4px',
+              padding: '6px',
             }}
             classes={{ popper: tooltipClasses }}
             interactive={tooltipInteractive}

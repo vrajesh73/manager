@@ -6,23 +6,29 @@ import type {
   MatchField,
   Route,
   Rule,
+  RuleCreatePayload,
   RulePayload,
 } from '@linode/api-v4';
 
-export const matchFieldMap: Record<MatchField, string> = {
+type CustomerFacingMatchFieldOption = Exclude<MatchField, 'always_match'>;
+
+export const matchFieldMap: Record<CustomerFacingMatchFieldOption, string> = {
   header: 'HTTP Header',
-  host: 'Host',
   method: 'HTTP Method',
-  path_prefix: 'Path',
+  path_prefix: 'Path Prefix',
+  path_regex: 'Path Regex',
   query: 'Query String',
 };
 
-export const matchValuePlaceholder: Record<MatchField, string> = {
+export const matchValuePlaceholder: Record<
+  CustomerFacingMatchFieldOption,
+  string
+> = {
   header: 'x-my-header=this',
-  host: 'example.com',
   method: 'POST',
   path_prefix: '/my-path',
-  query: '?my-query-param=this',
+  path_regex: '/path/.*[.](jpg)',
+  query: 'my-query-param=this',
 };
 
 export const matchTypeOptions = Object.keys(matchFieldMap).map(
@@ -43,21 +49,30 @@ export const defaultServiceTarget = {
   percentage: 100,
 };
 
-export const initialValues = {
-  match_condition: {
-    hostname: '',
-    match_field: 'path_prefix' as const,
-    match_value: '',
-    session_stickiness_cookie: null,
-    session_stickiness_ttl: null,
-  },
-  service_targets: [defaultServiceTarget],
+export const defaultTTLUnit = 'second';
+
+export const getInitialValues = (protocol: Route['protocol']) => {
+  if (protocol === 'tcp') {
+    return { service_targets: [defaultServiceTarget] };
+  }
+  return {
+    match_condition: {
+      hostname: '',
+      match_field: 'path_prefix' as const,
+      match_value: '',
+      session_stickiness_cookie: null,
+      session_stickiness_ttl: null,
+    },
+    service_targets: [defaultServiceTarget],
+  };
 };
 
-export const getIsSessionStickinessEnabled = (rule: Rule | RulePayload) => {
+export const getIsSessionStickinessEnabled = (
+  rule: Rule | RulePayload | RuleCreatePayload
+) => {
   return (
-    rule.match_condition.session_stickiness_cookie !== null ||
-    rule.match_condition.session_stickiness_ttl !== null
+    rule.match_condition?.session_stickiness_cookie !== null ||
+    rule.match_condition?.session_stickiness_ttl !== null
   );
 };
 
@@ -66,21 +81,22 @@ export const getIsSessionStickinessEnabled = (rule: Rule | RulePayload) => {
  * so that the API accepts the payload.
  */
 export const getNormalizedRulePayload = (rule: RulePayload) => ({
-  match_condition: {
-    ...rule.match_condition,
-    hostname: rule.match_condition.hostname
-      ? rule.match_condition.hostname
-      : null,
-  },
+  match_condition: rule.match_condition
+    ? {
+        ...rule.match_condition,
+        hostname: rule.match_condition.hostname
+          ? rule.match_condition.hostname
+          : null,
+      }
+    : undefined,
   service_targets: rule.service_targets,
 });
 
 export const timeUnitFactorMap = {
-  millisecond: 1,
-  second: 1000,
-  minute: 60000,
-  hour: 3_600_000,
-  day: 86_400_000,
+  second: 1,
+  minute: 60,
+  hour: 3_600,
+  day: 86_400,
 };
 
 export type TimeUnit = keyof typeof timeUnitFactorMap;
@@ -93,7 +109,7 @@ export const timeUnitOptions = Object.keys(timeUnitFactorMap).map(
   })
 );
 
-export const defaultTTL = timeUnitFactorMap['hour'] * 8;
+export const defaultTTL = timeUnitFactorMap['hour'] * 1;
 
 /**
  * Routes can be `http` or `tcp`.

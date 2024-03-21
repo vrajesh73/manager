@@ -1,14 +1,15 @@
 import { useSnackbar } from 'notistack';
 import * as React from 'react';
-import { useQueryClient } from 'react-query';
+import { useQueryClient } from '@tanstack/react-query';
 
 import { ActionsPanel } from 'src/components/ActionsPanel/ActionsPanel';
 import { ConfirmationDialog } from 'src/components/ConfirmationDialog/ConfirmationDialog';
-import { useAllFirewallDevicesQuery } from 'src/queries/firewalls';
+import { queryKey as firewallQueryKey } from 'src/queries/firewalls';
 import { useDeleteFirewall, useMutateFirewall } from 'src/queries/firewalls';
-import { capitalize } from 'src/utilities/capitalize';
+import { useAllFirewallDevicesQuery } from 'src/queries/firewalls';
 import { queryKey as linodesQueryKey } from 'src/queries/linodes/linodes';
 import { queryKey as nodebalancerQueryKey } from 'src/queries/nodebalancers';
+import { capitalize } from 'src/utilities/capitalize';
 
 export type Mode = 'delete' | 'disable' | 'enable';
 
@@ -76,6 +77,7 @@ export const FirewallDialog = React.memo((props: Props) => {
           device.entity.id,
           'firewalls',
         ]);
+        queryClient.invalidateQueries([firewallQueryKey]);
       });
     }
     enqueueSnackbar(`Firewall ${label} successfully ${mode}d`, {

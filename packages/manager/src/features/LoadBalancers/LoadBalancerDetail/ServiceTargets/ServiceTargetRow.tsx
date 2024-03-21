@@ -4,7 +4,9 @@ import { ActionMenu } from 'src/components/ActionMenu/ActionMenu';
 import { Hidden } from 'src/components/Hidden';
 import { TableCell } from 'src/components/TableCell';
 import { TableRow } from 'src/components/TableRow';
-import { useLoadbalancerCertificateQuery } from 'src/queries/aglb/certificates';
+import { useLoadbalancerCertificateQuery } from 'src/queries/aclb/certificates';
+
+import { ServiceTargetEndpontHeath } from './ServiceTargetEndpointHealth';
 
 import type { ServiceTarget } from '@linode/api-v4';
 
@@ -16,7 +18,7 @@ interface Props {
 }
 
 export const ServiceTargetRow = (props: Props) => {
-  const { onDelete, onEdit, serviceTarget, loadbalancerId } = props;
+  const { loadbalancerId, onDelete, onEdit, serviceTarget } = props;
 
   const { data: certificate } = useLoadbalancerCertificateQuery(
     loadbalancerId,
@@ -27,6 +29,14 @@ export const ServiceTargetRow = (props: Props) => {
   return (
     <TableRow key={serviceTarget.label}>
       <TableCell>{serviceTarget.label}</TableCell>
+      <Hidden mdDown>
+        <TableCell>
+          <ServiceTargetEndpontHeath
+            loadbalancerId={loadbalancerId}
+            serviceTargetId={serviceTarget.id}
+          />
+        </TableCell>
+      </Hidden>
       <TableCell>{serviceTarget.protocol.toUpperCase()}</TableCell>
       <Hidden smDown>
         <TableCell sx={{ textTransform: 'capitalize' }}>

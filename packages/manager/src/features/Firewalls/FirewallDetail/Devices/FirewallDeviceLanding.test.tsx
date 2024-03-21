@@ -4,7 +4,7 @@ import * as React from 'react';
 import { Router } from 'react-router-dom';
 
 import { firewallDeviceFactory } from 'src/factories';
-import { rest, server } from 'src/mocks/testServer';
+import { http, HttpResponse, server } from 'src/mocks/testServer';
 import { renderWithTheme } from 'src/utilities/testHelpers';
 
 import {
@@ -39,8 +39,8 @@ services.forEach((service: FirewallDeviceEntityType) => {
     props.forEach((prop) => {
       it('should render the component', () => {
         server.use(
-          rest.get('*/firewalls/*', (req, res, ctx) => {
-            return res(ctx.json(firewallDeviceFactory.buildList(1)));
+          http.get('*/firewalls/*', () => {
+            return HttpResponse.json(firewallDeviceFactory.buildList(1));
           })
         );
         const { getByRole, getByTestId } = renderWithTheme(
@@ -60,7 +60,7 @@ services.forEach((service: FirewallDeviceEntityType) => {
           );
           const addButton = getByTestId('add-device-button');
 
-          expect(addButton).toBeDisabled();
+          expect(addButton).toHaveAttribute('aria-disabled', 'true');
         });
         it('should contain permission notice when disabled', () => {
           const { getByRole } = renderWithTheme(
@@ -78,7 +78,7 @@ services.forEach((service: FirewallDeviceEntityType) => {
           );
           const addButton = getByTestId('add-device-button');
 
-          expect(addButton).toBeEnabled();
+          expect(addButton).toHaveAttribute('aria-disabled', 'false');
         });
         it(`should navigate to Add ${serviceName} To Firewall drawer when enabled`, () => {
           const history = createMemoryHistory();

@@ -10,9 +10,10 @@ import {
 } from 'src/components/PaymentMethodRow/ThirdPartyPayment';
 import { SelectionCard } from 'src/components/SelectionCard/SelectionCard';
 import { getIcon as getCreditCardIcon } from 'src/features/Billing/BillingPanels/BillingSummary/PaymentDrawer/CreditCard';
-import isCreditCardExpired, { formatExpiry } from 'src/utilities/creditCard';
+import { formatExpiry, isCreditCardExpired } from 'src/utilities/creditCard';
 
 interface Props {
+  disabled?: boolean;
   handlePaymentMethodChange: (id: number, cardExpired: boolean) => void;
   paymentMethod: PaymentMethod;
   paymentMethodId: number;
@@ -62,7 +63,12 @@ const getSubHeading = (paymentMethod: PaymentMethod, isExpired: boolean) => {
 
 export const PaymentMethodCard = (props: Props) => {
   const theme = useTheme();
-  const { handlePaymentMethodChange, paymentMethod, paymentMethodId } = props;
+  const {
+    disabled,
+    handlePaymentMethodChange,
+    paymentMethod,
+    paymentMethodId,
+  } = props;
   const { id, is_default, type } = paymentMethod;
 
   const heading = getHeading(paymentMethod, type);
@@ -109,6 +115,7 @@ export const PaymentMethodCard = (props: Props) => {
           padding: 0,
         }}
         checked={id === paymentMethodId}
+        disabled={disabled}
         heading={heading}
         onClick={() => handlePaymentMethodChange(id, cardIsExpired)}
         renderIcon={renderIcon}

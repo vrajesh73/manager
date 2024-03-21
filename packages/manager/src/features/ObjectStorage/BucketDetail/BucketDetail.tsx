@@ -5,10 +5,10 @@ import {
   getObjectList,
   getObjectURL,
 } from '@linode/api-v4/lib/object-storage';
+import { useQueryClient } from '@tanstack/react-query';
 import produce from 'immer';
 import { useSnackbar } from 'notistack';
 import * as React from 'react';
-import { useQueryClient } from 'react-query';
 import { useHistory, useLocation, useRouteMatch } from 'react-router-dom';
 import { Waypoint } from 'react-waypoint';
 import { debounce } from 'throttle-debounce';
@@ -22,6 +22,7 @@ import { TableBody } from 'src/components/TableBody';
 import { TableCell } from 'src/components/TableCell';
 import { TableHead } from 'src/components/TableHead';
 import { TableRow } from 'src/components/TableRow';
+import { ObjectUploader } from 'src/components/Uploaders/ObjectUploader/ObjectUploader';
 import { OBJECT_STORAGE_DELIMITER } from 'src/constants';
 import {
   prefixToQueryKey,
@@ -33,7 +34,6 @@ import { sendDownloadObjectEvent } from 'src/utilities/analytics';
 import { getQueryParamFromQueryString } from 'src/utilities/queryParams';
 import { truncateMiddle } from 'src/utilities/truncate';
 
-import { ObjectUploader } from '../ObjectUploader/ObjectUploader';
 import { deleteObject as _deleteObject } from '../requests';
 import {
   displayName,
@@ -271,7 +271,10 @@ export const BucketDetail = () => {
     const dataCopy = [...copy[copy.length - 1].data];
 
     dataCopy.push(object);
-    copy[copy.length - 1].data = dataCopy;
+    copy[copy.length - 1] = {
+      ...copy[copy.length - 1],
+      data: dataCopy,
+    };
 
     updateStore(copy);
   };

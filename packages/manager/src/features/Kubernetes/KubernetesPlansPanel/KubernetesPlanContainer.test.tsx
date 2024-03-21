@@ -9,13 +9,24 @@ import {
   KubernetesPlanContainerProps,
 } from './KubernetesPlanContainer';
 
-const plans = extendedTypeFactory.buildList(2);
+import type { TypeWithAvailability } from 'src/features/components/PlansPanel/types';
+
+const plans: TypeWithAvailability[] = [
+  {
+    ...extendedTypeFactory.build(),
+    isLimitedAvailabilityPlan: false,
+  },
+  {
+    ...extendedTypeFactory.build(),
+    isLimitedAvailabilityPlan: true,
+  },
+];
 
 const props: KubernetesPlanContainerProps = {
   getTypeCount: vi.fn(),
   onSelect: vi.fn(),
   plans,
-  selectedRegionID: undefined,
+  selectedRegionId: undefined,
   updatePlanCount: vi.fn(),
 };
 

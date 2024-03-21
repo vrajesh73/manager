@@ -1,11 +1,12 @@
 import { FirewallDevice } from '@linode/api-v4';
 import { useSnackbar } from 'notistack';
 import * as React from 'react';
-import { useQueryClient } from 'react-query';
+import { useQueryClient } from '@tanstack/react-query';
 
 import { ActionsPanel } from 'src/components/ActionsPanel/ActionsPanel';
 import { ConfirmationDialog } from 'src/components/ConfirmationDialog/ConfirmationDialog';
 import { Typography } from 'src/components/Typography';
+import { queryKey as firewallQueryKey } from 'src/queries/firewalls';
 import { useRemoveFirewallDeviceMutation } from 'src/queries/firewalls';
 import { queryKey as linodesQueryKey } from 'src/queries/linodes/linodes';
 import { queryKey as nodeBalancerQueryKey } from 'src/queries/nodebalancers';
@@ -57,6 +58,8 @@ export const RemoveDeviceDialog = React.memo((props: Props) => {
       device?.entity.id,
       'firewalls',
     ]);
+
+    queryClient.invalidateQueries([firewallQueryKey]);
 
     onClose();
   };

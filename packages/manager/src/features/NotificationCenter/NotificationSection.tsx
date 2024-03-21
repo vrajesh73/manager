@@ -1,6 +1,5 @@
 import KeyboardArrowDown from '@mui/icons-material/KeyboardArrowDown';
 import { styled } from '@mui/material/styles';
-import classNames from 'classnames';
 import * as React from 'react';
 import { makeStyles } from 'tss-react/mui';
 
@@ -41,6 +40,7 @@ const useStyles = makeStyles()((theme: Theme) => ({
 export interface NotificationItem {
   body: JSX.Element | string;
   countInTotal: boolean;
+  eventId: number;
   id: string;
 }
 
@@ -55,7 +55,7 @@ interface NotificationSectionProps {
 }
 
 export const NotificationSection = (props: NotificationSectionProps) => {
-  const { classes } = useStyles();
+  const { classes, cx } = useStyles();
 
   const {
     content,
@@ -79,7 +79,7 @@ export const NotificationSection = (props: NotificationSectionProps) => {
         <>
           <Hidden smDown>
             <StyledRootContainer
-              className={classNames({
+              className={cx({
                 [classes.notificationSpacing]: isActualNotificationContainer,
               })}
             >
@@ -140,7 +140,7 @@ interface BodyProps {
 }
 
 const ContentBody = React.memo((props: BodyProps) => {
-  const { classes } = useStyles();
+  const { classes, cx } = useStyles();
 
   const { content, count, emptyMessage, header, loading } = props;
 
@@ -161,8 +161,8 @@ const ContentBody = React.memo((props: BodyProps) => {
     <>
       {_content.map((thisItem) => (
         <StyledNotificationItem
+          header={props.header}
           key={`notification-row-${thisItem.id}`}
-          {...props}
         >
           {thisItem.body}
         </StyledNotificationItem>
@@ -181,7 +181,7 @@ const ContentBody = React.memo((props: BodyProps) => {
           >
             {showAll ? 'Collapse' : `${content.length - count} more`}
             <StyledCaret
-              className={classNames({
+              className={cx({
                 [classes.inverted]: showAll,
               })}
             />
@@ -232,14 +232,8 @@ const StyledLToggleContainer = styled(Box, {
 
 const StyledNotificationItem = styled(Box, {
   label: 'StyledNotificationItem',
-  shouldForwardProp: omittedProps([
-    'count',
-    'emptyMessage',
-    'header',
-    'loading',
-    'content',
-  ]),
-})<NotificationSectionProps>(({ theme, ...props }) => ({
+  shouldForwardProp: omittedProps(['header']),
+})<{ header: string }>(({ theme, ...props }) => ({
   '& p': {
     color: theme.textColors.headlineStatic,
     lineHeight: '1.25rem',

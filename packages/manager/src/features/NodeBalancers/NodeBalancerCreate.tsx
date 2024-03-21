@@ -30,14 +30,16 @@ import { Tag, TagsInput } from 'src/components/TagsInput/TagsInput';
 import { TextField } from 'src/components/TextField';
 import { Typography } from 'src/components/Typography';
 import { FIREWALL_GET_STARTED_LINK } from 'src/constants';
+import { getRestrictedResourceText } from 'src/features/Account/utils';
 import { useFlags } from 'src/hooks/useFlags';
+import { useRestrictedGlobalGrantCheck } from 'src/hooks/useRestrictedGlobalGrantCheck';
 import {
   reportAgreementSigningError,
   useAccountAgreements,
   useMutateAccountAgreements,
-} from 'src/queries/accountAgreements';
+} from 'src/queries/account/agreements';
 import { useNodebalancerCreateMutation } from 'src/queries/nodebalancers';
-import { useGrants, useProfile } from 'src/queries/profile';
+import { useProfile } from 'src/queries/profile';
 import { useRegionsQuery } from 'src/queries/regions';
 import { sendCreateNodeBalancerEvent } from 'src/utilities/analytics';
 import { getAPIErrorOrDefault } from 'src/utilities/errorUtils';
@@ -90,7 +92,6 @@ const defaultFieldsStates = {
 const NodeBalancerCreate = () => {
   const flags = useFlags();
   const { data: agreements } = useAccountAgreements();
-  const { data: grants } = useGrants();
   const { data: profile } = useProfile();
   const { data: regions } = useRegionsQuery();
 
@@ -126,11 +127,12 @@ const NodeBalancerCreate = () => {
   const theme = useTheme<Theme>();
   const matchesSmDown = useMediaQuery(theme.breakpoints.down('md'));
 
-  const disabled =
-    Boolean(profile?.restricted) && !grants?.global.add_nodebalancers;
+  const isRestricted = useRestrictedGlobalGrantCheck({
+    globalGrantType: 'add_nodebalancers',
+  });
 
   const addNodeBalancer = () => {
-    if (disabled) {
+    if (isRestricted) {
       return;
     }
     setNodeBalancerFields((prev) => ({
@@ -453,20 +455,22 @@ const NodeBalancerCreate = () => {
           breadcrumbDataAttrs: {
             'data-qa-create-nodebalancer-header': true,
           },
+          crumbOverrides: [{ label: 'NodeBalancers', position: 1 }],
           pathname: '/nodebalancers/create',
         }}
         title="Create"
       />
-      {generalError && !disabled && (
+      {generalError && !isRestricted && (
         <Notice spacingTop={8} variant="error">
           {generalError}
         </Notice>
       )}
-      {disabled && (
+      {isRestricted && (
         <Notice
-          text={
-            "You don't have permissions to create a new NodeBalancer. Please contact an account administrator for details."
-          }
+          text={getRestrictedResourceText({
+            action: 'create',
+            resourceType: 'NodeBalancers',
+          })}
           important
           spacingTop={16}
           variant="error"
@@ -474,7 +478,7 @@ const NodeBalancerCreate = () => {
       )}
       <Paper>
         <TextField
-          disabled={disabled}
+          disabled={isRestricted}
           errorText={hasErrorFor('label')}
           label={'NodeBalancer Label'}
           noMarginTop
@@ -490,17 +494,16 @@ const NodeBalancerCreate = () => {
                 }))
               : []
           }
-          disabled={disabled}
+          disabled={isRestricted}
           onChange={tagsChange}
           tagError={hasErrorFor('tags')}
         />
       </Paper>
       <SelectRegionPanel
         currentCapability="NodeBalancers"
-        disabled={disabled}
+        disabled={isRestricted}
         error={hasErrorFor('region')}
         handleSelection={regionChange}
-        regions={regions ?? []}
         selectedId={nodeBalancerFields.region}
       />
       {flags.firewallNodebalancer && (
@@ -518,6 +521,7 @@ const NodeBalancerCreate = () => {
               <Link to={FIREWALL_GET_STARTED_LINK}>Learn more</Link>.
             </Typography>
           }
+          disabled={isRestricted}
           entityType="nodebalancer"
           selectedFirewallId={nodeBalancerFields.firewall_id ?? -1}
         />
@@ -575,7 +579,7 @@ const NodeBalancerCreate = () => {
                 checkPassive={nodeBalancerFields.configs[idx].check_passive!}
                 checkPath={nodeBalancerFields.configs[idx].check_path!}
                 configIdx={idx}
-                disabled={disabled}
+                disabled={isRestricted}
                 errors={nodeBalancerConfig.errors}
                 healthCheckType={nodeBalancerFields.configs[idx].check!}
                 nodeBalancerRegion={nodeBalancerFields.region}
@@ -607,7 +611,7 @@ const NodeBalancerCreate = () => {
       </Box>
       <Button
         buttonType="outlined"
-        disabled={disabled}
+        disabled={isRestricted}
         onClick={addNodeBalancer}
         sx={matchesSmDown ? { marginLeft: theme.spacing(2) } : null}
       >
@@ -639,7 +643,7 @@ const NodeBalancerCreate = () => {
           }}
           buttonType="primary"
           data-qa-deploy-nodebalancer
-          disabled={showGDPRCheckbox && !hasSignedAgreement}
+          disabled={(showGDPRCheckbox && !hasSignedAgreement) || isRestricted}
           loading={isLoading}
           onClick={onCreate}
         >

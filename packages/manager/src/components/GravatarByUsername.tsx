@@ -1,10 +1,9 @@
 import Avatar from '@mui/material/Avatar';
 import { styled } from '@mui/material/styles';
-import classNames from 'classnames';
 import * as React from 'react';
 
 import UserIcon from 'src/assets/icons/account.svg';
-import { useAccountUser } from 'src/queries/accountUsers';
+import { useAccountUser } from 'src/queries/account/users';
 import { getGravatarUrl } from 'src/utilities/gravatar';
 
 interface Props {
@@ -20,10 +19,10 @@ export const GravatarByUsername = (props: Props) => {
   return (
     <StyledAvatar
       alt={`Avatar for user ${username}`}
-      className={classNames(className)}
+      className={className}
       src={url}
     >
-      <UserIcon className={classNames(className)} />
+      <UserIcon className={className} />
     </StyledAvatar>
   );
 };

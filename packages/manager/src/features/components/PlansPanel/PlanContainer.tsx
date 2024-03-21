@@ -9,13 +9,12 @@ import { TableBody } from 'src/components/TableBody';
 import { TableHead } from 'src/components/TableHead';
 import { TableRow } from 'src/components/TableRow';
 import { TableRowEmpty } from 'src/components/TableRowEmpty/TableRowEmpty';
-import { ExtendedType } from 'src/utilities/extendType';
 import { PLAN_SELECTION_NO_REGION_SELECTED_MESSAGE } from 'src/utilities/pricing/constants';
 
 import { StyledTable, StyledTableCell } from './PlanContainer.styles';
 import { PlanSelection } from './PlanSelection';
 
-import type { PlanSelectionType } from './types';
+import type { TypeWithAvailability } from './types';
 import type { Region } from '@linode/api-v4';
 
 const tableCells = [
@@ -39,10 +38,11 @@ export interface Props {
   currentPlanHeading?: string;
   disabled?: boolean;
   disabledClasses?: LinodeTypeClass[];
+  hideDisabledHelpIcons?: boolean;
   isCreate?: boolean;
   linodeID?: number | undefined;
   onSelect: (key: string) => void;
-  plans: PlanSelectionType[];
+  plans: TypeWithAvailability[];
   selectedDiskSize?: number;
   selectedId?: string;
   selectedRegionId?: Region['id'];
@@ -54,6 +54,7 @@ export const PlanContainer = (props: Props) => {
     currentPlanHeading,
     disabled,
     disabledClasses,
+    hideDisabledHelpIcons,
     isCreate,
     linodeID,
     onSelect,
@@ -67,46 +68,57 @@ export const PlanContainer = (props: Props) => {
 
   // Show the Transfer column if, for any plan, the api returned data and we're not in the Database Create flow
   const shouldShowTransfer =
-    showTransfer && plans.some((plan: ExtendedType) => plan.transfer);
+    showTransfer && plans.some((plan: TypeWithAvailability) => plan.transfer);
 
   // Show the Network throughput column if, for any plan, the api returned data (currently Bare Metal does not)
   const shouldShowNetwork =
-    showTransfer && plans.some((plan: ExtendedType) => plan.network_out);
+    showTransfer &&
+    plans.some((plan: TypeWithAvailability) => plan.network_out);
 
-  // DC Dynamic price logic - DB creation flow is currently out of scope
+  // DC Dynamic price logic - DB creation and DB resize flows are currently out of scope
   const isDatabaseCreateFlow = location.pathname.includes('/databases/create');
+  const isDatabaseResizeFlow =
+    location.pathname.match(/\/databases\/.*\/(\d+\/resize)/)?.[0] ===
+    location.pathname;
   const shouldDisplayNoRegionSelectedMessage =
-    !selectedRegionId && !isDatabaseCreateFlow;
+    !selectedRegionId && !isDatabaseCreateFlow && !isDatabaseResizeFlow;
 
   const renderPlanSelection = React.useCallback(() => {
-    return plans.map((plan, id) => (
-      <PlanSelection
-        currentPlanHeading={currentPlanHeading}
-        disabled={disabled}
-        disabledClasses={disabledClasses}
-        idx={id}
-        isCreate={isCreate}
-        key={id}
-        linodeID={linodeID}
-        onSelect={onSelect}
-        selectedDiskSize={selectedDiskSize}
-        selectedId={selectedId}
-        selectedRegionId={selectedRegionId}
-        showTransfer={showTransfer}
-        type={plan}
-      />
-    ));
+    return plans.map((plan, id) => {
+      return (
+        <PlanSelection
+          isLimitedAvailabilityPlan={
+            disabled ? false : plan.isLimitedAvailabilityPlan
+          } // No need for tooltip due to all plans being unavailable in region
+          currentPlanHeading={currentPlanHeading}
+          disabled={disabled}
+          disabledClasses={disabledClasses}
+          hideDisabledHelpIcons={hideDisabledHelpIcons}
+          idx={id}
+          isCreate={isCreate}
+          key={id}
+          linodeID={linodeID}
+          onSelect={onSelect}
+          selectedDiskSize={selectedDiskSize}
+          selectedId={selectedId}
+          selectedRegionId={selectedRegionId}
+          showTransfer={showTransfer}
+          type={plan}
+        />
+      );
+    });
   }, [
-    currentPlanHeading,
+    plans,
+    selectedRegionId,
     disabled,
+    currentPlanHeading,
     disabledClasses,
+    hideDisabledHelpIcons,
     isCreate,
     linodeID,
     onSelect,
-    plans,
     selectedDiskSize,
     selectedId,
-    selectedRegionId,
     showTransfer,
   ]);
 
@@ -127,11 +139,7 @@ export const PlanContainer = (props: Props) => {
       </Hidden>
       <Hidden lgDown={isCreate} mdDown={!isCreate}>
         <Grid xs={12}>
-          <StyledTable
-            aria-label="List of Linode Plans"
-            isDisabled={disabled}
-            spacingBottom={16}
-          >
+          <StyledTable aria-label="List of Linode Plans" spacingBottom={16}>
             <TableHead>
               <TableRow>
                 {tableCells.map(({ cellName, center, noWrap, testId }) => {

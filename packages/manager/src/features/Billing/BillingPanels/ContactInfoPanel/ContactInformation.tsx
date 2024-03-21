@@ -5,6 +5,9 @@ import * as React from 'react';
 import { useHistory, useRouteMatch } from 'react-router-dom';
 
 import { Typography } from 'src/components/Typography';
+import { getRestrictedResourceText } from 'src/features/Account/utils';
+import { EDIT_BILLING_CONTACT } from 'src/features/Billing/constants';
+import { useRestrictedGlobalGrantCheck } from 'src/hooks/useRestrictedGlobalGrantCheck';
 
 import {
   BillingActionButton,
@@ -12,6 +15,8 @@ import {
   BillingPaper,
 } from '../../BillingDetail';
 import BillingContactDrawer from './EditBillingContactDrawer';
+
+import type { Profile } from '@linode/api-v4';
 
 interface Props {
   address1: string;
@@ -23,6 +28,7 @@ interface Props {
   firstName: string;
   lastName: string;
   phone: string;
+  profile: Profile | undefined;
   state: string;
   taxId: string;
   zip: string;
@@ -52,6 +58,7 @@ const ContactInformation = (props: Props) => {
     firstName,
     lastName,
     phone,
+    profile,
     state,
     taxId,
     zip,
@@ -68,6 +75,14 @@ const ContactInformation = (props: Props) => {
   ] = React.useState<boolean>(false);
 
   const [focusEmail, setFocusEmail] = React.useState(false);
+
+  const isChildUser = Boolean(profile?.user_type === 'child');
+
+  const isReadOnly =
+    useRestrictedGlobalGrantCheck({
+      globalGrantType: 'account_access',
+      permittedGrantLevel: 'read_write',
+    }) || isChildUser;
 
   const handleEditDrawerOpen = React.useCallback(
     () => setEditContactDrawerOpen(true),
@@ -124,8 +139,18 @@ const ContactInformation = (props: Props) => {
               history.push('/account/billing/edit');
               handleEditDrawerOpen();
             }}
+            tooltipText={getRestrictedResourceText({
+              includeContactInfo: false,
+              isChildUser,
+              resourceType: 'Account',
+            })}
+            data-testid="edit-contact-info"
+            disableFocusRipple
+            disableRipple
+            disableTouchRipple
+            disabled={isReadOnly}
           >
-            Edit
+            {EDIT_BILLING_CONTACT}
           </BillingActionButton>
         </BillingBox>
 

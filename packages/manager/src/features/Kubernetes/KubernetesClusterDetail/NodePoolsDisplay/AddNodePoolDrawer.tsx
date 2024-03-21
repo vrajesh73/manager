@@ -1,6 +1,7 @@
 import { Theme } from '@mui/material/styles';
-import { makeStyles } from '@mui/styles';
+import { isNumber } from 'lodash';
 import * as React from 'react';
+import { makeStyles } from 'tss-react/mui';
 
 import { ActionsPanel } from 'src/components/ActionsPanel/ActionsPanel';
 import { Box } from 'src/components/Box';
@@ -20,27 +21,17 @@ import { scrollErrorIntoView } from 'src/utilities/scrollErrorIntoView';
 
 import { KubernetesPlansPanel } from '../../KubernetesPlansPanel/KubernetesPlansPanel';
 import { nodeWarning } from '../../kubeUtils';
+import { hasInvalidNodePoolPrice } from './utils';
 
 import type { Region } from '@linode/api-v4';
 
-const useStyles = makeStyles((theme: Theme) => ({
+const useStyles = makeStyles()((theme: Theme) => ({
   boxOuter: {
     [theme.breakpoints.down('md')]: {
       alignItems: 'flex-start',
       flexDirection: 'column',
     },
     width: '100%',
-  },
-  drawer: {
-    '& .MuiDrawer-paper': {
-      overflowX: 'hidden',
-      [theme.breakpoints.up('md')]: {
-        width: 790,
-      },
-    },
-    '& .MuiGrid-root': {
-      marginBottom: 0,
-    },
   },
   error: {
     marginBottom: '0 !important',
@@ -84,7 +75,7 @@ export const AddNodePoolDrawer = (props: Props) => {
     open,
     regionsData,
   } = props;
-  const classes = useStyles();
+  const { classes } = useStyles();
   const { data: types } = useAllTypes(open);
   const {
     error,
@@ -113,9 +104,11 @@ export const AddNodePoolDrawer = (props: Props) => {
     ?.monthly;
 
   const totalPrice =
-    selectedTypeInfo && pricePerNode
+    selectedTypeInfo && isNumber(pricePerNode)
       ? selectedTypeInfo.count * pricePerNode
       : undefined;
+
+  const hasInvalidPrice = hasInvalidNodePoolPrice(pricePerNode, totalPrice);
 
   React.useEffect(() => {
     if (open) {
@@ -160,10 +153,13 @@ export const AddNodePoolDrawer = (props: Props) => {
 
   return (
     <Drawer
-      className={classes.drawer}
+      PaperProps={{
+        sx: { maxWidth: '790px !important' },
+      }}
       onClose={onClose}
       open={open}
       title={`Add a Node Pool: ${clusterLabel}`}
+      wide
     >
       {error && (
         <Notice
@@ -192,7 +188,7 @@ export const AddNodePoolDrawer = (props: Props) => {
           regionsData={regionsData}
           resetValues={resetDrawer}
           selectedId={selectedTypeInfo?.planId}
-          selectedRegionID={clusterRegionId}
+          selectedRegionId={clusterRegionId}
           updatePlanCount={updatePlanCount}
         />
         {selectedTypeInfo &&
@@ -207,7 +203,7 @@ export const AddNodePoolDrawer = (props: Props) => {
             />
           )}
 
-        {selectedTypeInfo && !totalPrice && !pricePerNode && (
+        {selectedTypeInfo && hasInvalidPrice && (
           <Notice
             spacingBottom={16}
             spacingTop={8}
@@ -237,11 +233,10 @@ export const AddNodePoolDrawer = (props: Props) => {
           )}
           <ActionsPanel
             primaryButtonProps={{
-              disabled: !selectedTypeInfo,
+              disabled: !selectedTypeInfo || hasInvalidPrice,
               label: 'Add pool',
               loading: isLoading,
               onClick: handleAdd,
-              sx: { marginTop: '0 !important', paddingTop: 0 },
             }}
           />
         </Box>

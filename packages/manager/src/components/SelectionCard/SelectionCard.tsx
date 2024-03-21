@@ -1,5 +1,5 @@
 import Grid from '@mui/material/Unstable_Grid2';
-import { styled } from '@mui/material/styles';
+import { Theme, styled } from '@mui/material/styles';
 import { SxProps } from '@mui/system';
 import * as React from 'react';
 
@@ -54,7 +54,7 @@ export interface SelectionCardProps {
    * An array of subheadings to display below the heading.
    * @example ['Linode 1GB', 'Linode 2GB', 'Linode 4GB']
    */
-  subheadings: (string | undefined)[];
+  subheadings: (JSX.Element | string | undefined)[];
   /**
    * Optional styles to apply to the root element.
    */
@@ -78,7 +78,7 @@ export interface SelectionCardProps {
   /**
    * Optional styles to apply to the grid of the card.
    */
-  sxGrid?: SxProps;
+  sxGrid?: SxProps<Theme>;
   /**
    * Optional styles to apply to the tooltip of the card.
    */
@@ -86,7 +86,7 @@ export interface SelectionCardProps {
   /**
    * Optional text to set in a tooltip when hovering over the card.
    */
-  tooltip?: string;
+  tooltip?: JSX.Element | string;
 }
 
 /**
@@ -112,6 +112,7 @@ export const SelectionCard = React.memo((props: SelectionCardProps) => {
     sxCardBaseIcon,
     sxCardBaseSubheading,
     sxGrid,
+    sxTooltip,
     tooltip,
   } = props;
 
@@ -146,7 +147,9 @@ export const SelectionCard = React.memo((props: SelectionCardProps) => {
   const cardGrid = (
     <StyledGrid
       className={className}
+      data-testid="selection-card"
       data-qa-selection-card
+      data-qa-selection-card-checked={checked}
       disabled={disabled}
       id={id}
       lg={4}
@@ -164,7 +167,13 @@ export const SelectionCard = React.memo((props: SelectionCardProps) => {
 
   if (tooltip) {
     return (
-      <Tooltip placement="top" title={tooltip}>
+      <Tooltip
+        componentsProps={{
+          tooltip: { sx: sxTooltip },
+        }}
+        placement="top-end"
+        title={tooltip}
+      >
         {cardGrid}
       </Tooltip>
     );

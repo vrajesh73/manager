@@ -2,7 +2,7 @@ import { useTheme } from '@mui/material/styles';
 import * as React from 'react';
 
 import GridView from 'src/assets/icons/grid-view.svg';
-import { GroupByTagToggle } from 'src/components/EntityTable/EntityTableHeader';
+import { GroupByTagToggle } from 'src/components/GroupByTagToggle';
 import { Hidden } from 'src/components/Hidden';
 import { OrderByProps } from 'src/components/OrderBy';
 import { TableCell } from 'src/components/TableCell';
@@ -41,6 +41,8 @@ export const SortableTableHead = <T extends unknown>(
     toggleGroupLinodes,
     toggleLinodeView,
   } = props;
+
+  const displayViewDescriptionId = React.useId();
 
   const isActive = (label: string) =>
     label.toLowerCase() === orderBy.toLowerCase();
@@ -167,12 +169,12 @@ export const SortableTableHead = <T extends unknown>(
               justifyContent: 'flex-end',
             }}
           >
-            <div className="visually-hidden" id="displayViewDescription">
+            <div className="visually-hidden" id={displayViewDescriptionId}>
               Currently in {linodeViewPreference} view
             </div>
             <Tooltip placement="top" title="Summary view">
               <StyledToggleButton
-                aria-describedby={'displayViewDescription'}
+                aria-describedby={displayViewDescriptionId}
                 aria-label="Toggle display"
                 disableRipple
                 isActive={linodeViewPreference === 'grid'}

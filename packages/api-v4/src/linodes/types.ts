@@ -1,6 +1,7 @@
 import type { Region } from '../regions';
-import { IPAddress, IPRange } from '../networking/types';
-import { SSHKey } from '../profile/types';
+import type { IPAddress, IPRange } from '../networking/types';
+import type { SSHKey } from '../profile/types';
+import type { PlacementGroupPayload } from '../placement-groups/types';
 
 export type Hypervisor = 'kvm' | 'zen';
 
@@ -23,6 +24,7 @@ export interface Linode {
   ipv4: string[];
   ipv6: string | null;
   label: string;
+  placement_group?: PlacementGroupPayload; // If not in a placement group, this will be excluded from the response.
   type: string | null;
   status: LinodeStatus;
   updated: string;
@@ -226,10 +228,13 @@ export interface Kernel {
   label: string;
   version: string;
   kvm: boolean;
-  xen: boolean;
   architecture: KernelArchitecture;
   pvops: boolean;
   deprecated: boolean;
+  /**
+   * @example 2009-10-26T04:00:00
+   */
+  built: string;
 }
 
 export interface NetStats {
@@ -334,9 +339,19 @@ export interface UserData {
   user_data: string | null;
 }
 
+export interface CreateLinodePlacementGroupPayload {
+  id: number;
+  /**
+   * This parameter is silent in Cloud Manager, but still needs to be represented in the API types.
+   *
+   * @default false
+   */
+  compliant_only?: boolean;
+}
+
 export interface CreateLinodeRequest {
-  type?: string;
-  region?: string;
+  type: string;
+  region: string;
   stackscript_id?: number;
   backup_id?: number;
   swap_size?: number;
@@ -350,9 +365,10 @@ export interface CreateLinodeRequest {
   tags?: string[];
   private_ip?: boolean;
   authorized_users?: string[];
-  interfaces?: Interface[];
+  interfaces?: InterfacePayload[];
   metadata?: UserData;
   firewall_id?: number;
+  placement_group?: CreateLinodePlacementGroupPayload;
 }
 
 export type RescueRequestObject = Pick<

@@ -1,6 +1,6 @@
 export * from './account';
 
-export * from './aglb';
+export * from './aclb';
 
 export * from './databases';
 
@@ -25,6 +25,8 @@ export * from './networking';
 export * from './nodebalancers';
 
 export * from './object-storage';
+
+export * from './placement-groups';
 
 export * from './profile';
 

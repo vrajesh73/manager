@@ -11,8 +11,8 @@ import {
   reportAgreementSigningError,
   useAccountAgreements,
   useMutateAccountAgreements,
-} from 'src/queries/accountAgreements';
-import { useAccountSettings } from 'src/queries/accountSettings';
+} from 'src/queries/account/agreements';
+import { useAccountSettings } from 'src/queries/account/settings';
 import {
   useCreateBucketMutation,
   useObjectStorageBuckets,
@@ -123,7 +123,6 @@ export const CreateBucketDrawer = (props: Props) => {
         {isRestrictedUser && (
           <Notice
             data-qa-permissions-notice
-            important
             text="You don't have permissions to create a Bucket. Please contact an account administrator for details."
             variant="error"
           />

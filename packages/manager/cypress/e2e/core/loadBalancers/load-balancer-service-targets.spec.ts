@@ -1,5 +1,5 @@
 /**
- * @file Integration tests related to Cloud Manager AGLB Service Target management.
+ * @file Integration tests related to Cloud Manager ACLB Service Target management.
  */
 
 import {
@@ -21,16 +21,16 @@ import {
 } from 'support/intercepts/load-balancers';
 import { makeFeatureFlagData } from 'support/util/feature-flags';
 import type { Linode, ServiceTarget } from '@linode/api-v4';
-import { randomLabel, randomIp, randomNumber } from 'support/util/random';
+import { randomLabel, randomIp } from 'support/util/random';
 import { ui } from 'support/ui';
 import { chooseRegion } from 'support/util/regions';
 import { mockGetLinodes } from 'support/intercepts/linodes';
 
-describe('Akamai Global Load Balancer service targets', () => {
-  // TODO Remove this `beforeEach()` hook and related `cy.wait()` calls when `aglb` feature flag goes away.
+describe('Akamai Cloud Load Balancer service targets', () => {
+  // TODO Remove this `beforeEach()` hook and related `cy.wait()` calls when `aclb` feature flag goes away.
   beforeEach(() => {
     mockAppendFeatureFlags({
-      aglb: makeFeatureFlagData(true),
+      aclb: makeFeatureFlagData(true),
     }).as('getFeatureFlags');
     mockGetFeatureFlagClientstream().as('getClientStream');
   });
@@ -200,20 +200,10 @@ describe('Akamai Global Load Balancer service targets', () => {
           .should('be.visible')
           .click();
 
-        // Confirm that health check options are hidden when health check is disabled.
-        cy.findByText('Use Health Checks').should('be.visible').click();
-
-        cy.get('[data-qa-healthcheck-options]').should('not.exist');
-
-        // Re-enable health check, fill out form.
-        cy.findByText('Use Health Checks')
+        cy.findByLabelText('Health Check Host Header')
           .scrollIntoView()
           .should('be.visible')
-          .click();
-
-        cy.get('[data-qa-healthcheck-options]')
-          .scrollIntoView()
-          .should('be.visible');
+          .type('example.com');
 
         ui.button
           .findByTitle('Create Service Target')
@@ -264,7 +254,7 @@ describe('Akamai Global Load Balancer service targets', () => {
 
     mockGetLinodes(mockLinodes);
     mockGetLoadBalancer(mockLoadBalancer).as('getLoadBalancer');
-    mockGetServiceTargets(mockLoadBalancer, mockServiceTarget).as(
+    mockGetServiceTargets(mockLoadBalancer, [mockServiceTarget]).as(
       'getServiceTargets'
     );
     mockGetLoadBalancerCertificates(mockLoadBalancer.id, [
@@ -382,37 +372,13 @@ describe('Akamai Global Load Balancer service targets', () => {
           mockServiceTarget.healthcheck.unhealthy_threshold
         );
 
-        // Confirm that health check options are hidden when health check is disabled.
-        cy.findByText('Use Health Checks').should('be.visible').click();
-
-        cy.get('[data-qa-healthcheck-options]').should('not.exist');
-
-        // Re-enable health check, fill out form.
-        cy.findByText('Use Health Checks')
-          .scrollIntoView()
-          .should('be.visible')
-          .click();
-
-        cy.get('[data-qa-healthcheck-options]')
-          .scrollIntoView()
-          .should('be.visible');
-
-        // Confirm that health check options are restored to defaults after toggle.
-        cy.findByLabelText('Interval').should('have.value', 10);
-
-        cy.findByLabelText('Timeout').should('have.value', 5000);
-
-        cy.findByLabelText('Healthy Threshold').should('have.value', 5);
-
-        cy.findByLabelText('Unhealthy Threshold').should('have.value', 5);
-
         //Confirm that health check path and host match service target data.
         cy.findByLabelText('Health Check Path', { exact: false }).should(
           'have.value',
           mockServiceTarget.healthcheck.path
         );
 
-        cy.findByLabelText('Health Check Host', { exact: false }).should(
+        cy.findByLabelText('Health Check Host Header', { exact: false }).should(
           'have.value',
           mockServiceTarget.healthcheck.host
         );

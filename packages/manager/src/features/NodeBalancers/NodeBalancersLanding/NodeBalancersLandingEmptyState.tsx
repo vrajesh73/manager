@@ -7,9 +7,15 @@ import { DocumentTitleSegment } from 'src/components/DocumentTitle';
 import { Link } from 'src/components/Link';
 import { Placeholder } from 'src/components/Placeholder/Placeholder';
 import { Typography } from 'src/components/Typography';
+import { getRestrictedResourceText } from 'src/features/Account/utils';
+import { useRestrictedGlobalGrantCheck } from 'src/hooks/useRestrictedGlobalGrantCheck';
 
 export const NodeBalancerLandingEmptyState = () => {
   const history = useHistory();
+
+  const isRestricted = useRestrictedGlobalGrantCheck({
+    globalGrantType: 'add_nodebalancers',
+  });
 
   return (
     <React.Fragment>
@@ -18,7 +24,13 @@ export const NodeBalancerLandingEmptyState = () => {
         buttonProps={[
           {
             children: 'Create NodeBalancer',
+            disabled: isRestricted,
             onClick: () => history.push('/nodebalancers/create'),
+            tooltipText: getRestrictedResourceText({
+              action: 'create',
+              isSingular: false,
+              resourceType: 'NodeBalancers',
+            }),
           },
         ]}
         icon={NodeBalancer}

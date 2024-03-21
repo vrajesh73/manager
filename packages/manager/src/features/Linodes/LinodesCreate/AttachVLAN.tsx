@@ -2,7 +2,7 @@ import { Interface } from '@linode/api-v4/lib/linodes';
 import Grid from '@mui/material/Unstable_Grid2';
 import { useTheme } from '@mui/material/styles';
 import * as React from 'react';
-import { useQueryClient } from 'react-query';
+import { useQueryClient } from '@tanstack/react-query';
 
 import { Link } from 'src/components/Link';
 import { Paper } from 'src/components/Paper';
@@ -10,13 +10,10 @@ import { TooltipIcon } from 'src/components/TooltipIcon';
 import { Typography } from 'src/components/Typography';
 import { useRegionsQuery } from 'src/queries/regions';
 import { queryKey as vlansQueryKey } from 'src/queries/vlans';
-import { arrayToList } from 'src/utilities/arrayToList';
-import {
-  doesRegionSupportFeature,
-  regionsWithFeature,
-} from 'src/utilities/doesRegionSupportFeature';
+import { doesRegionSupportFeature } from 'src/utilities/doesRegionSupportFeature';
 
 import { InterfaceSelect } from '../LinodesDetail/LinodeSettings/InterfaceSelect';
+import { VLANAvailabilityNotice } from './VLANAvailabilityNotice';
 
 // @TODO VPC: Delete this file when VPC is released
 
@@ -49,7 +46,7 @@ export const AttachVLAN = React.memo((props: Props) => {
 
   React.useEffect(() => {
     // Ensure VLANs are fresh.
-    queryClient.invalidateQueries(vlansQueryKey);
+    queryClient.invalidateQueries([vlansQueryKey]);
   }, []);
 
   const regions = useRegionsQuery().data ?? [];
@@ -60,15 +57,6 @@ export const AttachVLAN = React.memo((props: Props) => {
     regions,
     'Vlans'
   );
-
-  const regionsThatSupportVLANs = regionsWithFeature(regions, 'Vlans').map(
-    (region) => region.label
-  );
-
-  const regionalAvailabilityMessage = `VLANs are currently available in ${arrayToList(
-    regionsThatSupportVLANs,
-    ';'
-  )}.`;
 
   return (
     <Paper
@@ -92,7 +80,7 @@ export const AttachVLAN = React.memo((props: Props) => {
       </Typography>
       <Grid container>
         <Grid xs={12}>
-          <Typography>{regionalAvailabilityMessage}</Typography>
+          <VLANAvailabilityNotice />
           <Typography sx={{ marginTop: theme.spacing(2) }} variant="body1">
             VLANs are used to create a private L2 Virtual Local Area Network
             between Linodes. A VLAN created or attached in this section will be

@@ -5,17 +5,20 @@ import {
   revokeObjectStorageKey,
   updateObjectStorageKey,
 } from '@linode/api-v4/lib/object-storage';
-import { FormikBag } from 'formik';
+import { FormikBag, FormikHelpers } from 'formik';
 import * as React from 'react';
 
 import { DocumentTitleSegment } from 'src/components/DocumentTitle';
 import { PaginationFooter } from 'src/components/PaginationFooter/PaginationFooter';
 import { SecretTokenDialog } from 'src/features/Profile/SecretTokenDialog/SecretTokenDialog';
+import { useAccountManagement } from 'src/hooks/useAccountManagement';
 import { useErrors } from 'src/hooks/useErrors';
+import { useFlags } from 'src/hooks/useFlags';
 import { useOpenClose } from 'src/hooks/useOpenClose';
 import { usePagination } from 'src/hooks/usePagination';
-import { useAccountSettings } from 'src/queries/accountSettings';
+import { useAccountSettings } from 'src/queries/account/settings';
 import { useObjectStorageAccessKeys } from 'src/queries/objectStorage';
+import { isFeatureEnabled } from 'src/utilities/accountCapabilities';
 import {
   sendCreateAccessKeyEvent,
   sendEditAccessKeyEvent,
@@ -24,7 +27,8 @@ import {
 import { getAPIErrorOrDefault, getErrorMap } from 'src/utilities/errorUtils';
 
 import { AccessKeyDrawer } from './AccessKeyDrawer';
-import { AccessKeyTable } from './AccessKeyTable';
+import { AccessKeyTable } from './AccessKeyTable/AccessKeyTable';
+import { OMC_AccessKeyDrawer } from './OMC_AccessKeyDrawer';
 import { RevokeAccessKeyDialog } from './RevokeAccessKeyDialog';
 import ViewPermissionsDrawer from './ViewPermissionsDrawer';
 import { MODE, OpenAccessDrawer } from './types';
@@ -81,10 +85,22 @@ export const AccessKeyLanding = (props: Props) => {
   const displayKeysDialog = useOpenClose();
   const revokeKeysDialog = useOpenClose();
   const viewPermissionsDrawer = useOpenClose();
+  const flags = useFlags();
+  const { account } = useAccountManagement();
+
+  const isObjMultiClusterEnabled = isFeatureEnabled(
+    'Object Storage Access Key Regions',
+    Boolean(flags.objMultiCluster),
+    account?.capabilities ?? []
+  );
 
   const handleCreateKey = (
     values: ObjectStorageKeyRequest,
-    { setErrors, setStatus, setSubmitting }: FormikProps
+    {
+      setErrors,
+      setStatus,
+      setSubmitting,
+    }: FormikHelpers<ObjectStorageKeyRequest>
   ) => {
     // Clear out status (used for general errors)
     setStatus(null);
@@ -140,7 +156,11 @@ export const AccessKeyLanding = (props: Props) => {
 
   const handleEditKey = (
     values: ObjectStorageKeyRequest,
-    { setErrors, setStatus, setSubmitting }: FormikProps
+    {
+      setErrors,
+      setStatus,
+      setSubmitting,
+    }: FormikHelpers<ObjectStorageKeyRequest>
   ) => {
     // This shouldn't happen, but just in case.
     if (!keyToEdit) {
@@ -158,7 +178,7 @@ export const AccessKeyLanding = (props: Props) => {
 
     setSubmitting(true);
 
-    updateObjectStorageKey(keyToEdit.id, { label: values.label })
+    updateObjectStorageKey(keyToEdit.id, values)
       .then((_) => {
         setSubmitting(false);
 
@@ -265,14 +285,26 @@ export const AccessKeyLanding = (props: Props) => {
         page={pagination.page}
         pageSize={pagination.pageSize}
       />
-      <AccessKeyDrawer
-        isRestrictedUser={props.isRestrictedUser}
-        mode={mode}
-        objectStorageKey={keyToEdit ? keyToEdit : undefined}
-        onClose={closeAccessDrawer}
-        onSubmit={mode === 'creating' ? handleCreateKey : handleEditKey}
-        open={accessDrawerOpen}
-      />
+      {isObjMultiClusterEnabled ? (
+        <OMC_AccessKeyDrawer
+          isRestrictedUser={props.isRestrictedUser}
+          mode={mode}
+          objectStorageKey={keyToEdit ? keyToEdit : undefined}
+          onClose={closeAccessDrawer}
+          onSubmit={mode === 'creating' ? handleCreateKey : handleEditKey}
+          open={accessDrawerOpen}
+        />
+      ) : (
+        <AccessKeyDrawer
+          isRestrictedUser={props.isRestrictedUser}
+          mode={mode}
+          objectStorageKey={keyToEdit ? keyToEdit : undefined}
+          onClose={closeAccessDrawer}
+          onSubmit={mode === 'creating' ? handleCreateKey : handleEditKey}
+          open={accessDrawerOpen}
+        />
+      )}
+
       <ViewPermissionsDrawer
         objectStorageKey={keyToEdit}
         onClose={viewPermissionsDrawer.close}

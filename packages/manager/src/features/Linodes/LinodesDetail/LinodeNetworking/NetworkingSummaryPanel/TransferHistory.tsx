@@ -7,6 +7,8 @@ import { DateTime, Interval } from 'luxon';
 import * as React from 'react';
 
 import PendingIcon from 'src/assets/icons/pending.svg';
+import { AreaChart } from 'src/components/AreaChart/AreaChart';
+import { LinodeNetworkTimeData, Point } from 'src/components/AreaChart/types';
 import { Box } from 'src/components/Box';
 import { CircleProgress } from 'src/components/CircleProgress';
 import { ErrorState } from 'src/components/ErrorState/ErrorState';
@@ -27,8 +29,6 @@ import {
 import { useProfile } from 'src/queries/profile';
 import { getAPIErrorOrDefault } from 'src/utilities/errorUtils';
 import { readableBytes } from 'src/utilities/unitConversions';
-
-import { NetworkTransferHistoryChart } from './NetworkTransferHistoryChart';
 
 interface Props {
   linodeCreated: string;
@@ -157,23 +157,39 @@ export const TransferHistory = React.memo((props: Props) => {
 
     // @TODO recharts: remove conditional code and delete old chart when we decide recharts is stable
     if (flags?.recharts) {
-      const timeData = combinedData.reduce((acc: any, point: any) => {
-        acc.push({
-          'Public Outbound Traffic': convertNetworkData
-            ? convertNetworkData(point[1])
-            : point[1],
-          t: point[0],
-        });
-        return acc;
-      }, []);
+      const timeData = combinedData.reduce(
+        (acc: LinodeNetworkTimeData[], point: Point) => {
+          acc.push({
+            'Public Outbound Traffic': convertNetworkData
+              ? convertNetworkData(point[1])
+              : point[1],
+            timestamp: point[0],
+          });
+          return acc;
+        },
+        []
+      );
 
       return (
-        <NetworkTransferHistoryChart
-          aria-label={graphAriaLabel}
-          data={timeData}
-          timezone={profile?.timezone ?? 'UTC'}
-          unit={unit}
-        />
+        <Box marginLeft={-5}>
+          <AreaChart
+            areas={[
+              {
+                color: '#1CB35C',
+                dataKey: 'Public Outbound Traffic',
+              },
+            ]}
+            xAxis={{
+              tickFormat: 'LLL dd',
+              tickGap: 15,
+            }}
+            ariaLabel={graphAriaLabel}
+            data={timeData}
+            height={190}
+            timezone={profile?.timezone ?? 'UTC'}
+            unit={` ${unit}/s`}
+          />
+        </Box>
       );
     }
 

@@ -7,9 +7,8 @@ import { Link } from 'react-router-dom';
 import { makeStyles } from 'tss-react/mui';
 
 import { Button } from 'src/components/Button/Button';
-import { H1Header } from 'src/components/H1Header/H1Header';
 import { ClickAwayListener } from 'src/components/ClickAwayListener';
-import { fadeIn } from 'src/styles/keyframes';
+import { H1Header } from 'src/components/H1Header/H1Header';
 
 import { TextField, TextFieldProps } from '../TextField';
 
@@ -63,7 +62,7 @@ const useStyles = makeStyles<void, 'editIcon' | 'icon'>()(
           color: theme.color.grey1,
         },
       },
-      border: '1px solid transparent',
+      borderLeft: '1px solid transparent',
     },
     input: {
       fontFamily: theme.font.bold,
@@ -92,7 +91,6 @@ const useStyles = makeStyles<void, 'editIcon' | 'icon'>()(
       wordBreak: 'break-all',
     },
     textField: {
-      animation: `${fadeIn} .3s ease-in-out forwards`,
       margin: 0,
     },
     underlineOnHover: {
@@ -106,10 +104,30 @@ const useStyles = makeStyles<void, 'editIcon' | 'icon'>()(
 interface Props {
   className?: string;
   errorText?: string;
+  /**
+   * Send event analytics
+   */
+  handleAnalyticsEvent?: () => void;
+  /**
+   * Optional link for the text when it is not in editing mode
+   */
   labelLink?: string;
+  /**
+   * Function to cancel editing and restore text to previous text
+   */
   onCancel: () => void;
+  /**
+   * The function to handle saving edited text
+   */
   onEdit: (text: string) => Promise<any>;
+  /**
+   * The text inside the textbox
+   */
   text: string;
+  /**
+   * Optional suffix to append to the text when it is not in editing mode
+   */
+  textSuffix?: string;
 }
 
 type PassThroughProps = Props & Omit<TextFieldProps, 'label'>;
@@ -122,10 +140,12 @@ export const EditableText = (props: PassThroughProps) => {
   const {
     className,
     errorText,
+    handleAnalyticsEvent,
     labelLink,
     onCancel,
     onEdit,
     text: propText,
+    textSuffix,
     ...rest
   } = props;
 
@@ -143,6 +163,10 @@ export const EditableText = (props: PassThroughProps) => {
   };
 
   const openEdit = () => {
+    // Send analytics when pencil icon is clicked.
+    if (handleAnalyticsEvent) {
+      handleAnalyticsEvent();
+    }
     setIsEditing(true);
   };
 
@@ -180,7 +204,11 @@ export const EditableText = (props: PassThroughProps) => {
     }
   };
   const labelText = (
-    <H1Header className={classes.root} data-qa-editable-text title={text} />
+    <H1Header
+      className={classes.root}
+      data-qa-editable-text
+      title={`${text}${textSuffix ?? ''}`}
+    />
   );
 
   return !isEditing && !errorText ? (
@@ -227,6 +255,7 @@ export const EditableText = (props: PassThroughProps) => {
           value={text}
         />
         <Button
+          aria-label="Save"
           className={classes.button}
           data-qa-save-edit
           onClick={finishEditing}
@@ -234,6 +263,7 @@ export const EditableText = (props: PassThroughProps) => {
           <Check className={classes.icon} />
         </Button>
         <Button
+          aria-label="Cancel"
           className={classes.button}
           data-qa-cancel-edit
           onClick={cancelEditing}
