@@ -606,6 +606,295 @@ const cloudView = [
       })
     );
   }),
+  rest.get('*/monitor/dashboards', async (req, res, ctx) => {
+    await sleep(1500);
+    return res(
+      ctx.json(
+        makeResourcePage([
+          {
+            created: '2023-07-12T16:08:53',
+            id: 1234,
+            label: 'Linode Metrics Overview',
+            service_type: 'linodes',
+            time_duration: {
+              unit: 'hr',
+              value: 1,
+            },
+            time_granularity: {
+              unit: 'sec',
+              value: 1,
+            },
+            updated: '2023-07-12T16:08:53',
+            widgets: [
+              {
+                aggregate_function: 'sum',
+                chart_type: 'line',
+                color: 'lightred',
+                filters: [],
+                group_by: '',
+                label: 'HTTP_200',
+                metric: '200',
+                namespace_id: 1,
+                region_id: 1,
+                service_type: 'ACLB',
+                size: 12,
+                time_granularity: {
+                  unit: 'sec',
+                  value: 1,
+                },
+                y_label: 'count',
+              },
+            ],
+          },
+          {
+            created: '2023-07-12T16:08:53',
+            id: 5678,
+            label: 'ACLB Metrics - overview',
+            service_type: 'ACLB',
+            time_duration: {
+              unit: 'hr',
+              value: 1,
+            },
+            time_granularity: {
+              unit: 'sec',
+              value: 1,
+            },
+            updated: '2023-07-12T16:08:53',
+            widgets: [
+              {
+                aggregate_function: 'sum',
+                chart_type: 'line',
+                color: 'lightred',
+                filters: [],
+                group_by: '',
+                label: 'HTTP_200',
+                metric: '200',
+                namespace_id: 1,
+                region_id: 1,
+                service_type: 'ACLB',
+                size: 12,
+                time_granularity: {
+                  unit: 'sec',
+                  value: 1,
+                },
+                y_label: 'count',
+              },
+            ],
+          },
+          {
+            created: '2023-07-12T16:08:53',
+            id: 9,
+            label: 'ACLB metrics - performance',
+            service_type: 'ACLB',
+            time_duration: {
+              unit: 'hr',
+              value: 1,
+            },
+            time_granularity: {
+              unit: 'sec',
+              value: 1,
+            },
+            updated: '2023-07-12T16:08:53',
+            widgets: [
+              {
+                aggregate_function: 'sum',
+                chart_type: 'line',
+                color: 'lightred',
+                filters: [],
+                group_by: '',
+                label: 'HTTP_200',
+                metric: '200',
+                namespace_id: 1,
+                region_id: 1,
+                service_type: 'ACLB',
+                size: 12,
+                time_granularity: {
+                  unit: 'sec',
+                  value: 1,
+                },
+                y_label: 'count',
+              },
+            ],
+          },
+          {
+            created: '2023-07-12T16:08:53',
+            id: 12349012,
+            label: 'Linode Metrics - Detail',
+            service_type: 'linodes',
+            time_duration: {
+              unit: 'hr',
+              value: 1,
+            },
+            time_granularity: {
+              unit: 'sec',
+              value: 1,
+            },
+            updated: '2023-07-12T16:08:53',
+            widgets: [
+              {
+                aggregate_function: 'sum',
+                chart_type: 'line',
+                color: 'lightred',
+                filters: [],
+                group_by: '',
+                label: 'HTTP_200',
+                metric: '200',
+                namespace_id: 1,
+                region_id: 1,
+                service_type: 'ACLB',
+                size: 12,
+                time_granularity: {
+                  unit: 'sec',
+                  value: 1,
+                },
+                y_label: 'count',
+              },
+            ],
+          },
+          {
+            created: '2023-07-12T16:08:53',
+            id: 12340912322,
+            label: 'Linode Metrics - CPU',
+            service_type: 'linodes',
+            time_duration: {
+              unit: 'hr',
+              value: 1,
+            },
+            time_granularity: {
+              unit: 'sec',
+              value: 1,
+            },
+            updated: '2023-07-12T16:08:53',
+            widgets: [
+              {
+                aggregate_function: 'sum',
+                chart_type: 'line',
+                color: 'lightred',
+                filters: [],
+                group_by: '',
+                label: 'HTTP_200',
+                metric: '200',
+                namespace_id: 1,
+                region_id: 1,
+                service_type: 'ACLB',
+                size: 12,
+                time_granularity: {
+                  unit: 'sec',
+                  value: 1,
+                },
+                y_label: 'count',
+              },
+            ],
+          },
+          {
+            created: '2023-07-12T16:08:53',
+            id: 3411,
+            label: 'ACLB Metrics - Memory',
+            service_type: 'ACLB',
+            time_duration: {
+              unit: 'hr',
+              value: 1,
+            },
+            time_granularity: {
+              unit: 'sec',
+              value: 1,
+            },
+            updated: '2023-07-12T16:08:53',
+            widgets: [
+              {
+                aggregate_function: 'sum',
+                chart_type: 'line',
+                color: 'lightred',
+                filters: [],
+                group_by: '',
+                label: 'HTTP_200',
+                metric: '200',
+                namespace_id: 1,
+                region_id: 1,
+                service_type: 'ACLB',
+                size: 12,
+                time_granularity: {
+                  unit: 'sec',
+                  value: 1,
+                },
+                y_label: 'count',
+              },
+            ],
+          },
+          {
+            created: '2023-07-12T16:08:53',
+            id: 901112,
+            label: 'ACLB Swap',
+            service_type: 'ACLB',
+            time_duration: {
+              unit: 'hr',
+              value: 1,
+            },
+            time_granularity: {
+              unit: 'sec',
+              value: 1,
+            },
+            updated: '2023-07-12T16:08:53',
+            widgets: [
+              {
+                aggregate_function: 'sum',
+                chart_type: 'line',
+                color: 'lightred',
+                filters: [],
+                group_by: '',
+                label: 'HTTP_200',
+                metric: '200',
+                namespace_id: 1,
+                region_id: 1,
+                service_type: 'ACLB',
+                size: 12,
+                time_granularity: {
+                  unit: 'sec',
+                  value: 1,
+                },
+                y_label: 'count',
+              },
+            ],
+          },
+          {
+            created: '2023-07-12T16:08:53',
+            id: 9870035,
+            label: 'Linode Metrics - Disk',
+            service_type: 'linodes',
+            time_duration: {
+              unit: 'hr',
+              value: 1,
+            },
+            time_granularity: {
+              unit: 'sec',
+              value: 1,
+            },
+            updated: '2023-07-12T16:08:53',
+            widgets: [
+              {
+                aggregate_function: 'sum',
+                chart_type: 'line',
+                color: 'lightred',
+                filters: [],
+                group_by: '',
+                label: 'HTTP_200',
+                metric: '200',
+                namespace_id: 1,
+                region_id: 1,
+                service_type: 'ACLB',
+                size: 12,
+                time_granularity: {
+                  unit: 'sec',
+                  value: 1,
+                },
+                y_label: 'count',
+              },
+            ],
+          },
+        ])
+      )
+    );
+  }),
 ];
 
 const nanodeType = linodeTypeFactory.build({ id: 'g6-nanode-1' });

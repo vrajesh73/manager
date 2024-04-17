@@ -3,8 +3,6 @@ import * as React from 'react';
 import { Autocomplete } from 'src/components/Autocomplete/Autocomplete';
 import { useCloudViewServices } from 'src/queries/cloudview/services';
 
-import { CloudViewResourceTypes } from './ResourceSelect';
-
 interface CloudViewServiceSelectProps {
   handleServiceChange: (service: string | undefined) => void;
 }
@@ -13,10 +11,7 @@ export const CloudViewServiceSelect = React.memo(
   (props: CloudViewServiceSelectProps) => {
     const { data: serviceOptions } = useCloudViewServices();
 
-    const [
-      selectedService,
-      setService,
-    ] = React.useState<CloudViewResourceTypes>();
+    const [selectedService, setService] = React.useState<string | undefined>();
 
     const getServicesList = () => {
       return serviceOptions ? addEntry(serviceOptions.service_types) : [];

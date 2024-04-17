@@ -7,13 +7,11 @@ import {
   useLoadBalancerResourcesQuery,
 } from 'src/queries/cloudview/resources';
 
-export type CloudViewResourceTypes = 'ACLB' | 'linodes' | undefined;
-
 interface CloudViewResourceSelectProps {
+  disabled: boolean;
   handleResourceChange: (resourceId: any) => void;
   region: string | undefined;
-  resourceType: CloudViewResourceTypes;
-  disabled: boolean;
+  resourceType: string | undefined;
 }
 
 interface Resource {
@@ -99,6 +97,7 @@ export const CloudViewResourceSelect = (
       autoSelect
       clearOnBlur
       disableClearable
+      disabled={props.disabled}
       forcePopupIcon
       freeSolo
       fullWidth
@@ -108,7 +107,7 @@ export const CloudViewResourceSelect = (
       noMarginTop
       options={getResourceList()}
       value={selectedResource ? selectedResource.label : ''}
-      disabled={props.disabled}
+      placeholder='Select a resource'
     />
   );
 };
