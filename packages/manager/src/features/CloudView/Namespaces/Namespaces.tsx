@@ -33,7 +33,7 @@ export const Namespaces = React.memo(() => {
     return <CircleProgress />;
   }
 
-  if (data?.results === 0) {
+  if (data?.results === 0 || data?.data == undefined) {
     return (
       <>
         <Paper>
@@ -67,7 +67,6 @@ export const Namespaces = React.memo(() => {
       </Paper>
     );
   }
-
   return (
     <React.Fragment>
       <Paper>
@@ -78,7 +77,7 @@ export const Namespaces = React.memo(() => {
           entity="Namespace"
           onButtonClick={onOpenCreateDrawer}
         />
-        <NamespaceList></NamespaceList>
+        <NamespaceList namespacesList={data.data}></NamespaceList>
       </Paper>
       <CreateNamespaceDrawer
         onClose={onCloseCreateDrawer}

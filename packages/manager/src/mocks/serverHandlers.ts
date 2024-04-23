@@ -31,6 +31,7 @@ import {
   createServiceTargetFactory,
   credentialFactory,
   creditPaymentResponseFactory,
+  dashboardFactory,
   databaseBackupFactory,
   databaseEngineFactory,
   databaseFactory,
@@ -106,6 +107,8 @@ import { accountUserFactory } from 'src/factories/accountUsers';
 import { grantFactory, grantsFactory } from 'src/factories/grants';
 import { pickRandom } from 'src/utilities/random';
 import { getStorage } from 'src/utilities/storage';
+
+import { getMetricsResponse } from './metricsMocker';
 
 export const makeResourcePage = <T>(
   e: T[],
@@ -553,6 +556,187 @@ const cloudView = [
     //   })
     // );
   }),
+
+  rest.post('*/monitor/service/*/metrics', async (req, res, ctx) => {
+    await sleep(1000);
+    const data = getMetricsResponse(req.body);
+    return res(ctx.json(data));
+  }),
+
+  // dashboards
+  rest.get('*/monitor/dashboards', async (req, res, ctx) => {
+    await sleep(100); // this is to test out loading feature
+    // TODO, decide how to work on widgets and filters (for now keeping static ones)
+    // return res(ctx.json(makeResourcePage(dashboardFactory.buildList(10))))
+    return res(
+      ctx.json(
+        makeResourcePage([
+          {
+            created: '2023-07-12T16:08:53',
+            id: req.params.id,
+            label: 'Akamai Global Dashboard',
+            service_type: 'linodes',
+            time_duration: {
+              unit: 'hr',
+              value: 1,
+            },
+            time_granularity: {
+              unit: 'sec',
+              value: 1,
+            },
+            updated: '2023-07-12T16:08:53',
+            widgets: [
+              {
+                aggregate_function: 'sum',
+                chart_type: 'line',
+                color: 'blue',
+                filters: [],
+                group_by: '',
+                label: 'CPU',
+                metric: '200',
+                namespace_id: 1,
+                region_id: 1,
+                service_type: 'ACLB',
+                size: 12,
+                unit: '%',
+                y_label: 'count',
+              },
+              {
+                aggregate_function: 'sum',
+                chart_type: 'line',
+                color: 'red',
+                filters: [],
+                group_by: '',
+                label: 'HTTP_400',
+                metric: '400',
+                namespace_id: 1,
+                region_id: 1,
+                service_type: 'ACLB',
+                size: 6,
+                unit: '%',
+                y_label: 'count',
+              },
+              {
+                aggregate_function: 'sum',
+                chart_type: 'line',
+                color: 'yellow',
+                filters: [],
+                group_by: '',
+                label: 'HTTP_500',
+                metric: '500',
+                namespace_id: 1,
+                region_id: 1,
+                service_type: 'ACLB',
+                size: 6,
+                unit: '%',
+                y_label: 'count',
+              },
+              {
+                aggregate_function: 'sum',
+                chart_type: 'line',
+                color: 'green',
+                filters: [],
+                group_by: '',
+                label: 'Network',
+                metric: '401',
+                namespace_id: 1,
+                region_id: 1,
+                service_type: 'ACLB',
+                size: 6,
+                unit: 'Kb/s',
+                y_label: 'count',
+              },
+            ],
+          },
+        ])
+      )
+    );
+  }),
+
+  rest.get('*/monitor/dashboards/:id', async (req, res, ctx) => {
+    await sleep(100); // this is to test out loading feature
+    if (req.params.id) {
+      return res(
+        ctx.json({
+          created: '2023-07-12T16:08:53',
+          id: req.params.id,
+          label: 'Akamai Global Dashboard',
+          service_type: 'ACLB',
+          time_duration: {
+            unit: 'hr',
+            value: 1,
+          },
+          time_granularity: {
+            unit: 'sec',
+            value: 1,
+          },
+          updated: '2023-07-12T16:08:53',
+          widgets: [
+            {
+              aggregate_function: 'sum',
+              chart_type: 'line',
+              color: 'lightred',
+              filters: [],
+              group_by: '',
+              label: 'HTTP_200',
+              metric: '200',
+              namespace_id: 1,
+              region_id: 1,
+              service_type: 'ACLB',
+              size: 12,
+              y_label: 'count',
+            },
+            {
+              aggregate_function: 'sum',
+              chart_type: 'line',
+              color: 'skyblue',
+              filters: [],
+              group_by: '',
+              label: 'HTTP_400',
+              metric: '400',
+              namespace_id: 1,
+              region_id: 1,
+              service_type: 'ACLB',
+              size: 6,
+              y_label: 'count',
+            },
+            {
+              aggregate_function: 'sum',
+              chart_type: 'line',
+              color: 'skyblue',
+              filters: [],
+              group_by: '',
+              label: 'HTTP_500',
+              metric: '500',
+              namespace_id: 1,
+              region_id: 1,
+              service_type: 'ACLB',
+              size: 6,
+              y_label: 'count',
+            },
+            {
+              aggregate_function: 'sum',
+              chart_type: 'line',
+              color: 'lightgreen',
+              filters: [],
+              group_by: '',
+              label: 'HTTP_401',
+              metric: '401',
+              namespace_id: 1,
+              region_id: 1,
+              service_type: 'ACLB',
+              size: 6,
+              y_label: 'count',
+            },
+          ],
+        })
+      );
+    } else {
+      // TODO, decide how to work on widgets and filters (for now keeping static ones)
+      return res(ctx.json(dashboardFactory.build({ id: 0 })));
+    }
+  }),
+
   rest.get('*/cloudview/services', async (req, res, ctx) => {
     await sleep(2000);
     return res(

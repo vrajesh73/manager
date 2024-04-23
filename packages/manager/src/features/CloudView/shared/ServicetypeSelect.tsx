@@ -45,6 +45,7 @@ export const CloudViewServiceSelect = React.memo(
         label=""
         noMarginTop
         options={getServicesList()}
+        placeholder="Select Service"
       />
     );
   }
